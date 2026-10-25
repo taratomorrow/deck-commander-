@@ -1,0 +1,2663 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Deck Commander">
+<meta name="theme-color" content="#1d2116">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+<style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+
+<title>Deck Commander</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Layout: one narrow field-kit column. HQ (rank, war map, orders, missions) -> one of four mission screens -> debrief. Single committed dark olive look. */
+:root{
+  color-scheme: dark;
+  --bg:#1d2116; --panel:#272d1f; --panel2:#323a29; --line:#46503a;
+  --fg:#ece6d0; --muted:#aaa48b; --khaki:#c8b98a; --amber:#e6a930;
+  --good:#8bbd52; --bad:#e3653f; --card:#f5f0e1; --ink:#1f1e1a; --suitred:#b8322a;
+  --sky:#26333a; --sky2:#1b2428;
+  --display:'Black Ops One', Impact, 'Arial Black', sans-serif;
+  --ui:'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --body:'Barlow', system-ui, -apple-system, sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+html,body{min-height:100%}
+body{
+  background:
+    repeating-linear-gradient(135deg, transparent 0 22px, rgba(200,185,138,.025) 22px 44px),
+    var(--bg);
+  color:var(--fg); font-family:var(--body); font-size:16px; line-height:1.45;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+  padding-block:16px 32px;
+}
+#app{max-width:520px; margin:0 auto; display:flex; flex-direction:column; gap:16px}
+section{display:flex; flex-direction:column; gap:16px}
+h1,h2,h3{font-family:var(--display); font-weight:400; letter-spacing:.02em; margin:0; text-wrap:balance}
+h1{font-size:2.4rem; line-height:1; color:var(--khaki)}
+h2{font-size:1.25rem; color:var(--khaki)}
+h3{font-size:1.15rem; color:var(--fg)}
+p{margin:0}
+.label{font-family:var(--ui); font-weight:600; text-transform:uppercase; letter-spacing:.12em; font-size:.8rem; color:var(--muted)}
+.muted{color:var(--muted)}
+button{font:inherit; color:inherit; cursor:pointer; border:0; background:none}
+button:focus-visible{outline:3px solid var(--amber); outline-offset:2px}
+button:disabled{cursor:default}
+.panel{background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:16px; display:flex; flex-direction:column; gap:12px}
+.bar{height:10px; background:var(--panel2); border-radius:5px; overflow:hidden}
+.bar > i{display:block; height:100%; background:var(--amber); width:0; transition:width .5s ease}
+.btn-main{
+  font-family:var(--display); font-size:1.4rem; letter-spacing:.04em;
+  background:var(--amber); color:var(--ink); border-radius:6px; padding:14px 20px;
+  box-shadow:0 4px 0 #9b6f15; transition:transform .08s;
+}
+.btn-main:active{transform:translateY(3px); box-shadow:0 1px 0 #9b6f15}
+.btn-sub{font-family:var(--ui); font-weight:600; font-size:1.1rem; padding:12px 16px; border:1px solid var(--line); border-radius:6px; background:var(--panel)}
+
+/* HQ */
+.masthead{display:flex; flex-direction:column; gap:6px; padding-top:4px}
+.masthead p{font-family:var(--ui); font-size:1.15rem}
+.victory{background:var(--good); color:var(--ink); border-radius:6px; padding:12px 16px; text-align:center}
+.victory .stamp{color:var(--ink)}
+.rank{display:flex; align-items:center; gap:14px}
+.badge{flex:none; width:64px; height:64px; border-radius:50%; background:var(--panel2); border:2px solid var(--khaki); display:grid; place-items:center}
+.badge svg{width:36px; height:36px}
+.rank-name{font-family:var(--display); font-size:1.4rem; line-height:1.1}
+.rank-meta{font-family:var(--ui); font-size:1rem; color:var(--muted); font-variant-numeric:tabular-nums}
+
+.war-head{display:flex; justify-content:space-between; align-items:baseline; gap:8px; flex-wrap:wrap}
+.war-count{font-family:var(--ui); font-size:1.05rem; font-variant-numeric:tabular-nums}
+.sectors{display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:6px}
+@media (min-width:460px){ .sectors{grid-template-columns:repeat(4, minmax(0,1fr))} }
+.sector{background:var(--panel2); border:1px solid var(--line); border-radius:4px; padding:8px; display:flex; flex-direction:column; gap:3px; min-width:0}
+.sector .sn{font-family:var(--display); font-size:1.25rem; line-height:1; color:var(--khaki)}
+.sector .sname{font-family:var(--ui); font-size:.9rem; line-height:1.1; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.bases{display:flex; gap:3px}
+.base{flex:1; min-width:0; height:24px; border-radius:3px; border:1px solid var(--line); background:var(--bg); display:grid; place-items:center}
+.base svg{width:14px; height:14px; fill:none; stroke:var(--muted); stroke-width:1.6}
+.base.on{background:var(--amber); border-color:var(--amber)}
+.base.on svg{fill:var(--ink); stroke:var(--ink)}
+.sector.free .base{background:var(--ink); border-color:var(--ink)}
+.sector.free .base svg{fill:var(--good); stroke:var(--good)}
+.newbase{display:flex; align-items:center; gap:10px; background:var(--panel2); border-radius:6px; padding:10px 12px}
+.newbase svg{flex:none; width:28px; height:28px; fill:var(--amber); stroke:var(--amber); stroke-width:1.6}
+.newbase b{font-family:var(--display); font-weight:400; font-size:1.1rem; display:block}
+.sector .sc{font-family:var(--ui); font-size:.85rem; font-variant-numeric:tabular-nums}
+.sector.free{background:var(--good); border-color:var(--good); color:var(--ink)}
+.sector.free .sn, .sector.free .sname, .sector.free .sc{color:var(--ink)}
+
+.orders-row{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
+.pips{display:flex; gap:6px}
+.pip{width:30px; height:30px; border-radius:50%; border:2px solid var(--line); display:grid; place-items:center; font-family:var(--display); color:var(--ink)}
+.pip.on{background:var(--amber); border-color:var(--amber)}
+
+.missions{display:flex; flex-direction:column; gap:10px}
+.mission{display:grid; grid-template-columns:52px minmax(0,1fr) auto; gap:12px; align-items:center; text-align:left; background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:12px; transition:border-color .15s, transform .08s}
+.mission:hover{border-color:var(--khaki)}
+.mission:active{transform:translateY(2px)}
+.mission .ico{width:52px; height:52px; border-radius:6px; background:var(--panel2); display:grid; place-items:center}
+.mission .ico svg{width:34px; height:34px}
+.mission .txt{display:flex; flex-direction:column; gap:2px; min-width:0}
+.mission .meta{font-family:var(--ui); font-size:.95rem; color:var(--amber)}
+.mission .go{font-family:var(--display); font-size:1.4rem; color:var(--amber)}
+
+details summary{cursor:pointer; font-family:var(--ui); font-weight:600; font-size:1.05rem; color:var(--khaki)}
+details[open] summary{margin-bottom:10px}
+.parent p + p{margin-top:8px}
+.parent ul{margin:8px 0; padding-left:20px; display:flex; flex-direction:column; gap:4px}
+.reset-row{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:12px}
+.btn-danger{font-family:var(--ui); font-weight:600; padding:8px 14px; border-radius:6px; border:1px solid var(--bad); color:var(--bad)}
+.btn-danger.solid{background:var(--bad); color:var(--ink)}
+
+.grid{display:grid; grid-template-columns:repeat(13, minmax(0,1fr)); gap:2px; font-family:var(--ui); font-variant-numeric:tabular-nums}
+.grid > div{aspect-ratio:1; display:grid; place-items:center; font-size:clamp(.55rem, 2.2vw, .78rem); border-radius:2px; max-width:100%}
+.gh{color:var(--khaki); font-weight:700; font-size:clamp(.65rem, 2.6vw, .9rem) !important}
+.s-unscouted{background:var(--panel2)}
+.s-contested{background:var(--amber); color:var(--ink)}
+.s-fire{background:var(--bad); color:var(--ink)}
+.s-captured{background:var(--good); color:var(--ink); font-weight:600}
+.legend{display:flex; flex-wrap:wrap; gap:6px 14px; font-family:var(--ui); font-size:.95rem}
+.legend span{display:inline-flex; align-items:center; gap:6px}
+.legend i{width:12px; height:12px; border-radius:2px; display:inline-block}
+
+
+/* Battlefield */
+#bf{width:100%; max-width:100%; aspect-ratio:2/3; height:auto; border-radius:6px; border:1px solid var(--line); background:var(--panel2); cursor:pointer; touch-action:manipulation}
+.bfinfo{display:flex; gap:12px; align-items:flex-start; background:var(--panel2); border-radius:6px; padding:12px}
+.bfinfo > svg{flex:none; width:28px; height:28px; fill:var(--amber); stroke:var(--amber); stroke-width:1.6}
+.bfinfo.enemy > svg{fill:var(--bad); stroke:var(--bad)}
+.bfinfo .txt{display:flex; flex-direction:column; gap:4px; min-width:0}
+.bfinfo b{font-family:var(--display); font-weight:400; font-size:1.15rem}
+.chip.c-contested{background:var(--amber)}
+.chip.c-fire{background:var(--bad)}
+.chip.c-unscouted{background:var(--panel); color:var(--fg); border:1px solid var(--line)}
+
+/* Shared mission chrome */
+.hud{display:flex; align-items:center; justify-content:space-between; gap:8px}
+.hud .counter{font-family:var(--ui); font-weight:700; font-size:1.15rem; font-variant-numeric:tabular-nums; text-align:center}
+.icon-btn{font-family:var(--ui); font-weight:600; font-size:1rem; padding:8px 12px; border:1px solid var(--line); border-radius:6px; background:var(--panel); min-width:44px}
+.icon-btn.armed{border-color:var(--bad); color:var(--bad)}
+.feedback{min-height:84px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:4px}
+.stamp{font-family:var(--display); font-size:1.6rem; letter-spacing:.04em}
+.stamp.good{color:var(--good)} .stamp.fast{color:var(--amber)} .stamp.bad{color:var(--bad)}
+.pop{animation:pop .3s ease-out}
+.intel{width:100%; text-align:left; background:var(--panel); border:1px solid var(--bad); border-radius:6px; padding:12px 14px; display:flex; flex-direction:column; gap:4px}
+.intel .fact{font-family:var(--display); font-size:1.5rem}
+.intel .tip{font-size:1rem}
+.intel .todo{font-family:var(--ui); font-weight:600; color:var(--amber); font-size:1.05rem}
+
+/* Typed missions (Bunker Assault, Code Breaker) */
+.enemy{display:flex; flex-direction:column; gap:6px}
+.enemy .bar{height:14px; border:1px solid var(--line)}
+.enemy .bar > i{background:var(--bad)}
+.enemy.hit .bar{animation:shake .35s}
+.board{display:flex; flex-wrap:wrap; justify-content:center; gap:10px 18px; padding:12px; background:var(--panel); border:1px solid var(--line); border-radius:6px}
+.word{display:flex; gap:4px}
+.lt{width:clamp(24px, 7vw, 32px); height:clamp(32px, 9vw, 40px); border-bottom:3px solid var(--line); display:grid; place-items:center; font-family:var(--display); font-size:clamp(1.1rem, 5vw, 1.5rem); color:var(--good)}
+.lt.cur{border-bottom-color:var(--amber); background:rgba(230,169,48,.15)}
+.lt.cur::after{content:"?"; color:var(--amber)}
+.table{display:flex; align-items:center; justify-content:center; gap:12px; padding-block:6px}
+.times{font-family:var(--display); font-size:2.2rem; color:var(--khaki)}
+.pcard{
+  width:clamp(90px, 26vw, 118px); aspect-ratio:5/7; max-width:100%;
+  background:var(--card); color:var(--ink); border-radius:10px;
+  box-shadow:0 6px 0 rgba(0,0,0,.35), inset 0 0 0 4px var(--card), inset 0 0 0 5px #d9d0b6;
+  position:relative; display:grid; place-items:center;
+}
+.pcard.red{color:var(--suitred)}
+.pcard .num{font-family:var(--display); font-size:clamp(2.6rem, 11vw, 3.4rem); line-height:1}
+.pcard .corner{position:absolute; font-family:var(--ui); font-weight:700; font-size:1rem; line-height:1; text-align:center}
+.pcard .tl{top:9px; left:10px}
+.pcard .br{bottom:9px; right:10px; transform:rotate(180deg)}
+.deal{animation:deal .32s ease-out both}
+.answer{display:flex; align-items:center; justify-content:center; gap:12px}
+.answer .eq{font-family:var(--display); font-size:2rem; color:var(--khaki)}
+.entry{min-width:130px; height:64px; border:2px solid var(--khaki); border-radius:6px; background:var(--panel); display:grid; place-items:center; font-family:var(--display); font-size:2.3rem; font-variant-numeric:tabular-nums; letter-spacing:.06em}
+.entry .cursor{color:var(--muted); animation:blink 1s steps(2) infinite}
+.entry.bad{animation:shake .35s; border-color:var(--bad)}
+.entry.good{border-color:var(--good); color:var(--good)}
+.keypad{display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px}
+.key{height:58px; border-radius:6px; background:var(--panel2); border:1px solid var(--line); font-family:var(--display); font-size:1.6rem; box-shadow:0 3px 0 rgba(0,0,0,.35); transition:transform .06s}
+.key:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(0,0,0,.35)}
+.key.fire{background:var(--amber); color:var(--ink); border-color:var(--amber); font-size:1.3rem}
+.key.del{font-family:var(--ui); font-weight:700; font-size:1.2rem}
+
+/* Air Defense */
+.radar{display:flex; align-items:center; justify-content:center; gap:14px; background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:10px 14px}
+.radar .lock{font-family:var(--display); font-size:3rem; line-height:1; color:var(--amber); font-variant-numeric:tabular-nums}
+.sky{position:relative; height:300px; border-radius:6px; overflow:hidden; border:1px solid var(--line);
+  background:
+    radial-gradient(circle at 50% 120%, transparent 0 30%, rgba(200,185,138,.07) 30.5% 31%, transparent 31.5% 50%, rgba(200,185,138,.07) 50.5% 51%, transparent 51.5%),
+    linear-gradient(var(--sky), var(--sky2));}
+.jet{position:absolute; left:-140px; width:120px; display:flex; flex-direction:column; align-items:center; gap:2px; touch-action:manipulation}
+.jet svg{width:72px; height:40px; fill:var(--khaki)}
+.jet.rtl svg{transform:scaleX(-1)}
+.jet .tag{background:var(--card); color:var(--ink); font-family:var(--display); font-size:1.35rem; line-height:1; padding:6px 10px; border-radius:6px; box-shadow:0 3px 0 rgba(0,0,0,.35); white-space:nowrap}
+.jet.dud{opacity:.45}
+.jet.dud .tag{background:var(--bad)}
+.jet.boom svg{display:none}
+.jet.boom .tag{background:var(--amber); animation:pop .3s ease-out}
+
+/* Supply Convoy */
+.pick{display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:8px}
+.pick button{background:var(--panel2); border:1px solid var(--line); border-radius:6px; padding:10px 4px; display:flex; flex-direction:column; align-items:center; gap:2px}
+.pick button b{font-family:var(--display); font-weight:400; font-size:1.5rem; color:var(--khaki)}
+.pick button span{font-family:var(--ui); font-size:.85rem; color:var(--muted)}
+.pick button.rec{border-color:var(--amber)}
+.pick button.rec span{color:var(--amber)}
+.road{display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:6px}
+.stop{background:var(--panel2); border:1px dashed var(--line); border-radius:4px; padding:6px 4px; display:flex; flex-direction:column; align-items:center; gap:0; min-height:62px; justify-content:center}
+.stop .st{font-family:var(--ui); font-size:.85rem; color:var(--muted)}
+.stop .sv{font-family:var(--display); font-size:1.5rem; line-height:1.1; font-variant-numeric:tabular-nums}
+.stop.done{border-style:solid; border-color:var(--good)}
+.stop.done .sv{color:var(--good)}
+.stop.cur{border-style:solid; border-color:var(--amber); background:rgba(230,169,48,.15)}
+.stop.cur svg{width:34px; height:22px; fill:var(--amber)}
+.choices{display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px}
+.choice{height:72px; border-radius:6px; background:var(--panel2); border:1px solid var(--line); font-family:var(--display); font-size:2rem; box-shadow:0 3px 0 rgba(0,0,0,.35)}
+.choice.no{background:var(--bad); color:var(--ink); opacity:.6; animation:shake .35s}
+.choice.yes{background:var(--good); color:var(--ink)}
+
+/* Reward arcade */
+.coins{display:inline-flex; align-items:center; gap:8px; font-family:var(--display); font-size:1.6rem; color:var(--amber); font-variant-numeric:tabular-nums}
+.coin{width:24px; height:24px; flex:none}
+.games{display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px}
+.game{background:var(--panel2); border:1px solid var(--line); border-radius:6px; padding:12px; display:flex; flex-direction:column; align-items:flex-start; gap:4px; text-align:left; min-width:0}
+.game:not(:disabled):hover{border-color:var(--amber)}
+.game b{font-family:var(--display); font-weight:400; font-size:1.15rem}
+.game .price{font-family:var(--ui); font-weight:700; font-size:1rem; color:var(--amber)}
+.game:disabled{opacity:.55}
+.game:disabled .price{color:var(--muted)}
+.game svg{width:44px; height:30px}
+#arc{width:min(100%, calc((100vh - 230px) * 400 / 560)); min-width:min(100%, 280px); margin-inline:auto; display:block; max-width:100%; aspect-ratio:400/560; height:auto; border-radius:6px; border:1px solid var(--line); touch-action:none; user-select:none; -webkit-user-select:none; cursor:crosshair; background:var(--panel2)}
+.skstat{flex:1 1 100% !important; display:grid; grid-template-columns:auto 1fr; align-items:center; gap:6px 10px}
+.skstat > span:last-child{grid-column:1 / -1}
+.btn-drop{font-family:var(--display); font-size:1.6rem; letter-spacing:.04em; background:var(--bad); color:var(--ink); border-radius:6px; padding:14px 20px; box-shadow:0 4px 0 #8f3a22}
+.btn-drop:disabled{opacity:.4}
+#arCtl .btn-main:disabled{opacity:.45}
+#skGo:not(:disabled){animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 4px 0 #9b6f15, 0 0 0 6px rgba(230,169,48,.35)}}
+.sktip{flex:1 1 100% !important; font-family:var(--ui); font-weight:600; font-size:1.05rem; color:var(--amber)}
+.coinbar{display:flex; align-items:center; gap:10px; background:var(--panel2); border:1px solid var(--amber); border-radius:6px; padding:10px 14px}
+.coinbar b{font-family:var(--display); font-weight:400; font-size:1.2rem; color:var(--amber)}
+
+/* Progress report */
+.sync{font-family:var(--ui); font-size:1rem; padding:10px 14px; border-radius:6px; background:var(--panel); border:1px solid var(--line); display:flex; gap:10px; align-items:center}
+.sync .dot{width:10px; height:10px; border-radius:50%; flex:none; background:var(--muted)}
+.sync.live .dot{background:var(--good); box-shadow:0 0 0 4px rgba(139,189,82,.2)}
+.tiles{display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px}
+@media (min-width:480px){ .tiles{grid-template-columns:repeat(3, minmax(0,1fr))} }
+.tile{background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:12px; display:flex; flex-direction:column; gap:2px; min-width:0}
+.tile strong{font-family:var(--display); font-weight:400; font-size:1.8rem; line-height:1.1; font-variant-numeric:tabular-nums}
+.tile .delta{font-family:var(--ui); font-size:.95rem}
+.up{color:var(--good)} .down{color:var(--bad)} .flat{color:var(--muted)}
+.tbl-wrap{overflow-x:auto; margin-inline:-4px}
+table.rep{width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; font-size:.95rem}
+table.rep th{font-family:var(--ui); font-weight:600; text-transform:uppercase; letter-spacing:.08em; font-size:.75rem; color:var(--muted); text-align:right; padding:6px 6px; border-bottom:1px solid var(--line); white-space:nowrap}
+table.rep td{padding:7px 6px; text-align:right; border-bottom:1px solid rgba(70,80,58,.5); white-space:nowrap}
+table.rep th:first-child, table.rep td:first-child{text-align:left}
+table.rep td.wrap{white-space:normal; text-align:left}
+.mini{display:inline-block; width:32px; height:6px; background:var(--panel2); border-radius:3px; vertical-align:middle; margin-left:6px; overflow:hidden}
+.mini i{display:block; height:100%}
+.hgrid{display:grid; grid-template-columns:repeat(13, minmax(0,1fr)); gap:2px; font-family:var(--ui); font-variant-numeric:tabular-nums}
+.hgrid > *{aspect-ratio:1; display:grid; place-items:center; border-radius:2px; font-size:clamp(.5rem, 2vw, .72rem); max-width:100%; padding:0; border:0}
+.hgrid .gh{color:var(--khaki); font-weight:700; font-size:clamp(.65rem,2.6vw,.9rem)}
+.h-none{background:var(--panel2); color:var(--muted)}
+.h-good{background:var(--good); color:var(--ink)}
+.h-ok{background:#5d6b41; color:var(--fg)}
+.h-slow{background:var(--amber); color:var(--ink)}
+.h-bad{background:var(--bad); color:var(--ink)}
+.hgrid button.sel{outline:2px solid var(--fg); outline-offset:1px}
+.chart text{fill:var(--muted); font-family:var(--ui); font-size:11px}
+.note{font-size:.95rem; color:var(--muted)}
+
+/* Special weapons */
+.pcard.special{box-shadow:0 6px 0 rgba(0,0,0,.35), inset 0 0 0 4px var(--card), inset 0 0 0 6px var(--amber), 0 0 0 3px var(--amber), 0 0 18px rgba(230,169,48,.55)}
+.weapon-tag{font-family:var(--ui); font-weight:700; letter-spacing:.1em; text-transform:uppercase; font-size:.85rem; color:var(--ink); background:var(--amber); padding:3px 10px; border-radius:3px}
+.armory{display:flex; flex-direction:column; gap:10px}
+.arm-row{display:grid; grid-template-columns:110px minmax(0,1fr); gap:10px; align-items:start}
+.arm-row .tier{display:flex; flex-direction:column}
+.arm-row .tier b{font-family:var(--display); font-weight:400; font-size:1rem; color:var(--amber)}
+.arm-row .tier span{font-family:var(--ui); font-size:.85rem; color:var(--muted)}
+.chip.gold{background:var(--amber)}
+.fired{display:flex; flex-direction:column; gap:6px}
+.fired div{display:flex; justify-content:space-between; gap:10px; background:var(--panel2); border-radius:4px; padding:8px 10px; font-family:var(--ui); font-size:1.05rem}
+.fired .up{font-weight:700}
+
+/* Secret awards, surprises, toasts */
+#toast{position:fixed; left:0; right:0; top:0; z-index:50; display:flex; justify-content:center; pointer-events:none;
+  padding:calc(10px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px))}
+#toast .t{pointer-events:auto; max-width:480px; width:100%; background:var(--amber); color:var(--ink); border-radius:6px; padding:12px 14px; box-shadow:0 8px 24px rgba(0,0,0,.45); display:flex; gap:12px; align-items:center; animation:drop .4s ease-out}
+#toast .t.egg{background:#b7d97e}
+#toast .t b{font-family:var(--display); font-weight:400; font-size:1.2rem; display:block}
+#toast .t span{font-family:var(--ui); font-size:1rem}
+#toast .medal{flex:none; width:40px; height:40px}
+@keyframes drop{from{transform:translateY(-30px); opacity:0} to{transform:none; opacity:1}}
+.badge.salute{animation:spin .8s ease-in-out}
+@keyframes spin{to{transform:rotate(360deg) scale(1.1)}}
+.awards{display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:8px}
+.award{background:var(--panel2); border:1px solid var(--line); border-radius:6px; padding:10px; display:flex; flex-direction:column; gap:2px; min-width:0}
+.award b{font-family:var(--display); font-weight:400; font-size:1rem; color:var(--amber)}
+.award span{font-family:var(--ui); font-size:.9rem; color:var(--muted)}
+.award.locked{border-style:dashed; align-items:center; justify-content:center; color:var(--muted); font-family:var(--display); font-size:1.4rem; min-height:62px}
+.supply{display:inline-block; margin-top:4px; font-family:var(--ui); font-weight:700; color:var(--ink); background:#b7d97e; border-radius:3px; padding:2px 8px}
+
+/* Visual armory + medal case */
+.armory{display:grid !important; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px}
+.wpn{background:var(--panel2); border:1px solid var(--line); border-radius:6px; padding:10px 6px 8px; display:flex; flex-direction:column; align-items:center; gap:4px; position:relative; min-width:0}
+.wpn svg{width:56px; height:36px}
+.wpn .wn{font-family:var(--ui); font-weight:600; font-size:.85rem; line-height:1.1; text-align:center}
+.wpn .wc{position:absolute; top:6px; right:6px; min-width:22px; height:22px; border-radius:11px; background:var(--amber); color:var(--ink); font-family:var(--display); font-size:.85rem; display:grid; place-items:center; padding:0 5px}
+.wpn.off{opacity:.35}
+.wpn.off .wc{display:none}
+.wpn.sel{border-color:var(--amber)}
+.armsel, .awsel{min-height:1.4em; font-family:var(--ui); font-size:1rem}
+.medals{display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:6px}
+@media (min-width:460px){ .medals{grid-template-columns:repeat(8, minmax(0,1fr))} }
+.md{aspect-ratio:1; border-radius:50%; display:grid; place-items:center; background:var(--panel2); border:1px dashed var(--line); padding:0; max-width:100%}
+.md svg{width:70%; height:70%}
+.md.got{background:radial-gradient(circle at 35% 30%, #ffe3a1, var(--amber) 60%, #9b6f15); border:0; box-shadow:0 2px 0 rgba(0,0,0,.35)}
+.md.egg.got{background:radial-gradient(circle at 35% 30%, #e6f5c9, #b7d97e 60%, #5f7a36)}
+.md.lock span{font-family:var(--display); color:var(--muted); font-size:1.1rem}
+.md.sel{outline:2px solid var(--fg); outline-offset:2px}
+
+/* Counterattack */
+#attack{position:fixed; inset:0; z-index:60; background:rgba(10,12,8,.78); display:grid; place-items:center;
+  padding:calc(16px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px))}
+.atk{width:100%; max-width:440px; background:var(--panel); border:2px solid var(--bad); border-radius:8px; overflow:hidden; animation:drop .4s ease-out}
+.atk-stripe{height:16px; background:repeating-linear-gradient(135deg, var(--bad) 0 14px, var(--ink) 14px 28px); animation:stripe 1s linear infinite}
+@keyframes stripe{to{background-position:28px 0}}
+.atk-body{padding:18px; display:flex; flex-direction:column; gap:12px}
+.atk-body h1{color:var(--bad); font-size:2rem}
+.atk .chip{background:var(--amber)}
+#dcv{width:100%; max-width:100%; aspect-ratio:400/380; height:auto; border-radius:6px; border:1px solid var(--line); background:var(--panel2); display:block}
+#dFact{font-size:1.6rem; min-width:5ch; text-align:right}
+
+.savewarn{background:var(--bad); color:var(--ink); border-radius:6px; padding:10px 12px; font-family:var(--ui); font-size:1rem; margin-bottom:8px}
+.savewarn b{font-family:var(--display); font-weight:400; display:block; font-size:1.1rem}
+
+/* Debrief */
+.stars{font-size:3rem; letter-spacing:.15em; color:var(--amber); text-align:center; line-height:1}
+.stars .off{color:var(--panel2)}
+.stats{display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px; text-align:center}
+.stats div{background:var(--panel2); border-radius:6px; padding:10px 4px; display:flex; flex-direction:column; gap:2px}
+.stats strong{font-family:var(--display); font-weight:400; font-size:1.7rem; font-variant-numeric:tabular-nums}
+.chips{display:flex; flex-wrap:wrap; gap:6px}
+.chip{font-family:var(--ui); font-weight:700; font-size:1.05rem; background:var(--good); color:var(--ink); padding:4px 10px; border-radius:4px}
+.promo{background:var(--amber); color:var(--ink); border-radius:6px; padding:14px 16px; text-align:center}
+.promo .stamp{color:var(--ink)}
+.decoded{font-family:var(--display); font-size:1.6rem; color:var(--good); text-align:center; letter-spacing:.06em}
+.row{display:flex; gap:10px; flex-wrap:wrap}
+.row > *{flex:1 1 160px}
+
+@keyframes deal{from{transform:translateY(-24px) rotate(-6deg); opacity:.2} to{transform:none; opacity:1}}
+@keyframes shake{0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)}}
+@keyframes pop{from{transform:scale(1.35)} to{transform:scale(1)}}
+@keyframes blink{50%{opacity:0}}
+@media (prefers-reduced-motion: reduce){
+  *, *::before, *::after{animation:none !important; transition:none !important}
+}
+</style>
+</head>
+<body>
+
+
+<div id="app">
+
+  <!-- HQ -->
+  <section id="home">
+    <header class="masthead">
+      <div class="savewarn" id="saveWarn" hidden><b>Progress can't be saved here.</b> Turn off Private Browsing. If that doesn't fix it, go to Settings &rsaquo; Apps &rsaquo; Safari and turn off "Block All Cookies".</div>
+      <span class="label">Times-tables campaign</span>
+      <h1>Deck Commander</h1>
+      <p>Capture all 78 facts to win the war.</p>
+    </header>
+
+    <div class="victory" id="victory" hidden>
+      <span class="label" style="color:var(--ink)">All 12 regions liberated</span>
+      <div class="stamp">Victory! The war is won.</div>
+    </div>
+
+    <div class="panel">
+      <div class="rank">
+        <div class="badge" id="badge" aria-hidden="true"></div>
+        <div style="min-width:0; flex:1; display:flex; flex-direction:column; gap:6px">
+          <span class="label">Your rank</span>
+          <span class="rank-name" id="rankName">Recruit</span>
+          <div class="bar" aria-hidden="true"><i id="rankBar"></i></div>
+          <span class="rank-meta" id="rankMeta">0 medals</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="orders-row">
+        <div style="display:flex; flex-direction:column; gap:2px">
+          <h2>Today's orders</h2>
+          <span class="muted" id="ordersText">Complete 3 missions today for a 5-medal bonus.</span>
+        </div>
+        <div class="pips" id="pips"></div>
+      </div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:10px">
+      <h2>Choose a mission</h2>
+      <div class="missions" id="missions"></div>
+    </div>
+
+    <div class="panel">
+      <div class="war-head">
+        <h2>Reward Arcade</h2>
+        <span class="coins"><svg class="coin" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="var(--amber)"/><circle cx="12" cy="12" r="7.5" fill="none" stroke="var(--ink)" stroke-width="1.5" opacity=".5"/><path d="M12 7l1.5 3.2 3.5.4-2.6 2.4.7 3.5L12 14.8 8.9 16.5l.7-3.5L7 10.6l3.5-.4z" fill="var(--ink)" opacity=".6"/></svg><span id="coins">0</span></span>
+      </div>
+      <p class="muted" style="font-size:.95rem">Earn coins in missions. No math in here.</p>
+      <div class="games" id="games"></div>
+    </div>
+
+    <div class="panel">
+      <div class="war-head">
+        <h2>The Battlefield</h2>
+        <span class="war-count" id="bfCount">0 of 36 bunkers</span>
+      </div>
+      <p class="muted" style="font-size:.95rem">Each region is a times table. Tap a bunker to scout it.</p>
+      <canvas id="bf" width="400" height="600" role="img" aria-label="Battlefield map"></canvas>
+      <div class="legend">
+        <span><i class="s-captured"></i>Captured fact</span>
+        <span><i class="s-contested"></i>Contested</span>
+        <span><i class="s-fire"></i>Under fire</span>
+        <span><i class="s-unscouted"></i>Not scouted</span>
+      </div>
+      <div class="bfinfo" id="bfInfo"></div>
+    </div>
+
+    <div class="panel">
+      <div class="war-head">
+        <h2>Armory</h2>
+        <span class="war-count" id="armCount">0 special weapons</span>
+      </div>
+      <div class="armory" id="armory"></div>
+      <div class="armsel" id="armSel"></div>
+    </div>
+
+    <div class="panel">
+      <div class="war-head">
+        <h2>Service Record</h2>
+        <span class="war-count" id="awCount">0 secret awards</span>
+      </div>
+      <div class="medals" id="awards"></div>
+      <div class="awsel muted" id="awSel">Tap a medal</div>
+    </div>
+
+    <div class="panel">
+      <div class="war-head"><h2>Save code</h2><span class="war-count muted" id="bkWhen"></span></div>
+      <p class="muted" style="font-size:.95rem">Backup of all progress. Copy it and text it to yourself. Paste it here to restore.</p>
+      <div class="row">
+        <button class="btn-main" id="bkCopy" type="button">Copy save code</button>
+        <button class="btn-sub" id="bkOpen" type="button">Restore</button>
+      </div>
+      <div id="bkRestore" hidden style="display:flex; flex-direction:column; gap:8px">
+        <label for="bkIn" class="label">Paste a save code</label>
+        <textarea id="bkIn" rows="3" style="width:100%; font:inherit; font-size:.9rem; background:var(--panel2); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:8px"></textarea>
+        <div class="row"><button class="btn-main" id="bkLoad" type="button">Restore this progress</button></div>
+      </div>
+      <textarea id="bkOut" rows="3" readonly hidden style="width:100%; font-size:.8rem; background:var(--panel2); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:8px"></textarea>
+      <p class="muted" id="bkMsg" style="font-family:var(--ui)"></p>
+    </div>
+  </section>
+  <div id="toast" aria-live="polite"></div>
+  <div id="attack" hidden>
+    <div class="atk" role="dialog" aria-labelledby="atkTitle">
+      <div class="atk-stripe"></div>
+      <div class="atk-body">
+        <span class="label" style="color:var(--bad)">Incoming</span>
+        <h1 id="atkTitle">Enemy counterattack!</h1>
+        <p>They're coming for your special weapons.</p>
+        <div class="chips" id="atkFacts"></div>
+        <div class="row">
+          <button class="btn-main" id="atkGo" type="button">Defend the base</button>
+          <button class="btn-sub" id="atkLater" type="button">Not now</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TYPED MISSIONS -->
+  <section id="typed" hidden>
+    <div class="hud">
+      <button class="icon-btn back" type="button">&#9664; HQ</button>
+      <span class="counter" id="tCounter">Card 1 of 12</span>
+      <button class="icon-btn snd" type="button">Sound on</button>
+    </div>
+    <div id="tProgress"></div>
+    <div class="table" id="table" aria-live="polite"></div>
+    <div class="answer">
+      <span class="eq">=</span>
+      <div class="entry" id="entry" aria-live="polite"><span class="cursor">_</span></div>
+    </div>
+    <div class="feedback" id="tFeedback"></div>
+    <div class="keypad" id="keypad">
+      <button class="key" data-k="1" type="button">1</button>
+      <button class="key" data-k="2" type="button">2</button>
+      <button class="key" data-k="3" type="button">3</button>
+      <button class="key" data-k="4" type="button">4</button>
+      <button class="key" data-k="5" type="button">5</button>
+      <button class="key" data-k="6" type="button">6</button>
+      <button class="key" data-k="7" type="button">7</button>
+      <button class="key" data-k="8" type="button">8</button>
+      <button class="key" data-k="9" type="button">9</button>
+      <button class="key del" data-k="del" type="button" aria-label="Delete">DEL</button>
+      <button class="key" data-k="0" type="button">0</button>
+      <button class="key fire" data-k="fire" type="button">FIRE</button>
+    </div>
+  </section>
+
+  <!-- COUNTERATTACK -->
+  <section id="defend" hidden>
+    <div class="hud">
+      <button class="icon-btn back" type="button">&#9664; HQ</button>
+      <span class="counter" id="dCounter">Counterattack</span>
+      <button class="icon-btn snd" type="button">Sound on</button>
+    </div>
+    <canvas id="dcv" width="400" height="380"></canvas>
+    <div class="answer">
+      <span class="eq" id="dFact">?</span>
+      <div class="entry" id="dEntry" aria-live="polite"><span class="cursor">_</span></div>
+    </div>
+    <div class="feedback" id="dFeedback"></div>
+    <div class="keypad" id="dKeypad">
+      <button class="key" data-k="1" type="button">1</button><button class="key" data-k="2" type="button">2</button><button class="key" data-k="3" type="button">3</button>
+      <button class="key" data-k="4" type="button">4</button><button class="key" data-k="5" type="button">5</button><button class="key" data-k="6" type="button">6</button>
+      <button class="key" data-k="7" type="button">7</button><button class="key" data-k="8" type="button">8</button><button class="key" data-k="9" type="button">9</button>
+      <button class="key del" data-k="del" type="button" aria-label="Delete">DEL</button><button class="key" data-k="0" type="button">0</button><button class="key fire" data-k="fire" type="button">FIRE</button>
+    </div>
+  </section>
+
+  <!-- AIR DEFENSE -->
+  <section id="air" hidden>
+    <div class="hud">
+      <button class="icon-btn back" type="button">&#9664; HQ</button>
+      <span class="counter" id="aCounter">Wave 1 of 10</span>
+      <button class="icon-btn snd" type="button">Sound on</button>
+    </div>
+    <div class="radar">
+      <span class="label">Radar lock</span>
+      <span class="lock" id="lock">42</span>
+      <span class="label">Tap the jet<br>that makes it</span>
+    </div>
+    <div class="sky" id="sky"></div>
+    <div class="feedback" id="aFeedback"></div>
+  </section>
+
+  <!-- SUPPLY CONVOY -->
+  <section id="convoy" hidden>
+    <div class="hud">
+      <button class="icon-btn back" type="button">&#9664; HQ</button>
+      <span class="counter" id="cCounter">Pick a route</span>
+      <button class="icon-btn snd" type="button">Sound on</button>
+    </div>
+    <div id="cBody" style="display:flex; flex-direction:column; gap:16px"></div>
+  </section>
+
+  <!-- ARCADE -->
+  <section id="arcade" hidden>
+    <div class="hud">
+      <button class="icon-btn back" type="button">&#9664; HQ</button>
+      <span class="counter" id="arTitle">Plane Blaster</span>
+      <button class="icon-btn snd" type="button">Sound on</button>
+    </div>
+    <div class="row" id="arCtl" hidden></div>
+    <canvas id="arc" width="400" height="560"></canvas>
+    <p class="muted" id="arHelp" style="text-align:center"></p>
+  </section>
+
+  <!-- PROGRESS REPORT (open with #report) -->
+  <section id="report" hidden>
+    <div class="hud">
+      <button class="icon-btn" id="repBack" type="button">&#9664; Game</button>
+      <span class="counter">Progress report</span>
+      <span style="min-width:60px"></span>
+    </div>
+    <header class="masthead">
+      <span class="label">Deck Commander &middot; multiplication facts 1&ndash;12</span>
+      <h1>Progress Report</h1>
+      <p class="muted" style="font-family:var(--body); font-size:1rem">Every answer from every mission, with speed and mistakes. Recall speed comes from the typing missions (Bunker Assault and Code Breaker), where he has to produce the answer himself.</p>
+    </header>
+    <div class="sync" id="repSync"></div>
+    <div id="repBody" style="display:flex; flex-direction:column; gap:16px"></div>
+  </section>
+
+  <!-- DEBRIEF -->
+  <section id="debrief" hidden></section>
+</div>
+
+<script>
+(function(){
+  const KEY = 'deckCommander.v1';
+  const $ = s => document.querySelector(s);
+  const $$ = s => [...document.querySelectorAll(s)];
+  const screens = { home:$('#home'), typed:$('#typed'), air:$('#air'), convoy:$('#convoy'), defend:$('#defend'), arcade:$('#arcade'), debrief:$('#debrief'), report:$('#report') };
+  const FAST = 5;
+  const PRI = [1,2,10,5,11,9,4,3,6,8,12,7];
+  const SUITS = [['♠',0],['♥',1],['♦',1],['♣',0]];
+  const RANKS = [[0,'Recruit'],[5,'Private'],[15,'Corporal'],[30,'Sergeant'],[50,'Staff Sergeant'],[75,'Lieutenant'],[110,'Captain'],[150,'Major'],[200,'Colonel'],[260,'General'],[340,'Five-Star General']];
+  const SECTORS = ['Base Camp','Twin Bridges','Pine Ridge','Fort Square','Five Forks','Hex Hills','Iron Gap','Octo Bay','Nine Mile Pass','Ten Towers','Eleven Falls','Capital City'];
+  const MESSAGES = ['TANKS AT DAWN','HOLD THE LINE','THE EAGLE HAS LANDED','ROGER THAT','CODE RED ALERT','ATTACK AT NOON','MISSION GO','SNEAK ATTACK','BRAVO TEAM GO','OPERATION PIZZA','DOGS ARE SPIES','SECRET TUNNEL','HEAD NORTH'];
+  const ICONS = {
+    bunker:'<svg viewBox="0 0 34 34"><rect x="4" y="7" width="15" height="21" rx="2" fill="var(--card)" transform="rotate(-10 11 17)"/><rect x="14" y="6" width="15" height="21" rx="2" fill="var(--card)" stroke="var(--panel2)" stroke-width="1.5" transform="rotate(8 21 16)"/><text x="21" y="21" font-size="10" text-anchor="middle" fill="var(--suitred)" font-family="Black Ops One, Impact" transform="rotate(8 21 16)">7</text></svg>',
+    code:'<svg viewBox="0 0 34 34" fill="none" stroke="var(--khaki)" stroke-width="2.4" stroke-linecap="round"><rect x="5" y="13" width="24" height="16" rx="2"/><path d="M10 13 L22 4"/><circle cx="12" cy="21" r="3"/><path d="M19 18h6M19 23h6"/></svg>',
+    air:'<svg viewBox="0 0 72 40"><path fill="var(--khaki)" d="M4 20 L24 16 L36 3 L44 3 L38 16 L58 16 Q70 20 58 24 L38 24 L44 37 L36 37 L24 24 Z"/></svg>',
+    convoy:'<svg viewBox="0 0 40 26"><path fill="var(--khaki)" d="M2 4h22v14H2z M25 9h7l6 6v3H25z"/><circle cx="9" cy="21" r="3.5" fill="var(--khaki)"/><circle cx="31" cy="21" r="3.5" fill="var(--khaki)"/></svg>'
+  };
+  const JET = '<svg viewBox="0 0 72 40" aria-hidden="true"><path d="M4 20 L24 16 L36 3 L44 3 L38 16 L58 16 Q70 20 58 24 L38 24 L44 37 L36 37 L24 24 Z"/></svg>';
+  const TRUCK = '<svg viewBox="0 0 40 26" aria-hidden="true"><path d="M2 4h22v14H2z M25 9h7l6 6v3H25z"/><circle cx="9" cy="21" r="3.5"/><circle cx="31" cy="21" r="3.5"/></svg>';
+
+  // ---------- storage ----------
+  const today = () => { const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); };
+  function load(){
+    let o = null;
+    try{ const raw = localStorage.getItem(KEY); if(raw) o = JSON.parse(raw); }catch(e){}
+    if(!o || !o.facts) o = { facts:{} };
+    return Object.assign({ medals:0, missions:0, sound:true, orders:{ date:'', count:0 }, coins:10, best:{}, log:[] }, o);
+  }
+  let storageOK = true;
+  try{ localStorage.setItem('dc.test', '1'); storageOK = localStorage.getItem('dc.test') === '1'; localStorage.removeItem('dc.test'); }catch(e){ storageOK = false; }
+  function save(){
+    try{ localStorage.setItem(KEY, JSON.stringify(S)); }
+    catch(e){ storageOK = false; const w = document.getElementById('saveWarn'); if(w) w.hidden = false; }
+  }
+  let S = load();
+
+  // ---------- facts ----------
+  const key = (a,b) => a<=b ? a+'x'+b : b+'x'+a;
+  const ALL = [];
+  for(let a=1;a<=12;a++) for(let b=a;b<=12;b++) ALL.push([a,b]);
+  const info = k => S.facts[k] || { lv:0, seen:false, right:0, wrong:0 };
+  const diff = ([a,b]) => { const x=PRI.indexOf(a), y=PRI.indexOf(b); return Math.min(x,y)*12 + Math.max(x,y); };
+  function stateOf(k){
+    const i = S.facts[k];
+    if(!i || !i.seen) return 'unscouted';
+    if(i.lv >= 3) return 'captured';
+    if(i.lv === 0) return 'fire';
+    return 'contested';
+  }
+  const shuffle = arr => { for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; };
+  const orient = ([a,b]) => Math.random()<.5 ? [a,b] : [b,a];
+  // Spaced review: each captured fact has a next-review time (due) and an interval in days (int)
+  // that doubles after every fast, correct review: 1, 2, 4, 8, 16, 32, 60 days.
+  const DAY = 86400000;
+  const WEAPONS = [[1,'Mortar'],[2,'Cannon'],[4,'Artillery'],[8,'Rocket Battery'],[16,'Air Strike'],[32,'Battleship Barrage']];
+  const weaponFor = int => { let w = WEAPONS[0][1]; WEAPONS.forEach(([d,n]) => { if((int||1) >= d) w = n; }); return w; };
+  const factFrom = k => k.split('x').map(Number);
+  function pools(){
+    const now = Date.now();
+    const learning = ALL.filter(f => { const i=info(key(...f)); return i.seen && i.lv<3; })
+      .sort((x,y) => info(key(...x)).lv - info(key(...y)).lv || diff(x)-diff(y));
+    const unseen = ALL.filter(f => !info(key(...f)).seen).sort((x,y) => diff(x)-diff(y));
+    const capturedAll = ALL.filter(f => info(key(...f)).lv>=3);
+    const due = capturedAll.filter(f => (info(key(...f)).due||0) <= now).sort((x,y) => (info(key(...x)).due||0) - (info(key(...y)).due||0));
+    const mastered = shuffle(capturedAll.filter(f => (info(key(...f)).due||0) > now));
+    const nb = nearestBase();
+    const push = nb ? baseFacts(...nb).filter(f => !info(key(...f)).seen).map(([a,b]) => a<=b ? [a,b] : [b,a]) : [];
+    return { learning, unseen, mastered, due, push };
+  }
+  // facts he has mixed up with a target (e.g. answered 56 for 7 x 9 -> 7 x 8)
+  function partnersOf(targets){
+    const out = [], seen = new Set(targets.map(f => key(...f)));
+    targets.forEach(f => (info(key(...f)).conf || []).forEach(k => { if(!seen.has(k) && out.length < 2){ seen.add(k); out.push({ f:factFrom(k), of:key(...f) }); } }));
+    return out;
+  }
+  // n distinct facts: up to 3 being learned plus mix-up partners, facts due for review, then scouting
+  function pickFacts(n){
+    const { learning, unseen, mastered, due, push } = pools();
+    const out = [], have = new Set();
+    const add = f => { const k=key(...f); if(out.length<n && !have.has(k)){ have.add(k); out.push(f); } };
+    const targets = learning.slice(0,3);
+    targets.forEach(add);
+    partnersOf(targets).forEach(p => add(p.f));
+    due.slice(0,4).forEach(add);
+    push.forEach(add);
+    shuffle(unseen.slice(0,30)).slice(0, Math.max(0, n - out.length - 1)).forEach(add);
+    due.forEach(add);
+    mastered.forEach(add);
+    learning.forEach(add);
+    shuffle(ALL.slice()).forEach(add);
+    return shuffle(out).map(orient);
+  }
+  function buildBunker(){
+    const { learning, unseen, mastered, due, push } = pools();
+    const deck = [];
+    const targets = learning.slice(0,3);
+    targets.forEach(f => deck.push(f,f));
+    const partners = partnersOf(targets);
+    const used = new Set([...targets, ...partners.map(p=>p.f)].map(f => key(...f)));
+    due.filter(f => !used.has(key(...f))).slice(0,4).forEach(f => { deck.push(f); used.add(key(...f)); });
+    push.forEach(f => { if(deck.length < 9 - partners.length && !used.has(key(...f))){ deck.push(f); used.add(key(...f)); } });
+    const room = 12 - partners.length;
+    deck.push(...shuffle(unseen.filter(f => !used.has(key(...f))).slice(0,30)).slice(0, Math.max(0, room - deck.length - 1)));
+    let di = 0; const restDue = due.filter(f => !used.has(key(...f)));
+    while(deck.length < room && di < restDue.length) deck.push(restDue[di++]);
+    let mi = 0; while(deck.length < room && mi < mastered.length) deck.push(mastered[mi++]);
+    let ti = 0; while(deck.length < room && targets.length) deck.push(targets[ti++ % targets.length]);
+    while(deck.length < room) deck.push(ALL[Math.floor(Math.random()*ALL.length)]);
+    let best = shuffle(deck.slice());
+    for(let t=0;t<60;t++){
+      if(best.every((f,i) => i===0 || key(...f)!==key(...best[i-1]))) break;
+      best = shuffle(deck.slice());
+    }
+    // put each mix-up partner right after the fact it gets confused with
+    partners.forEach(p => {
+      const i = best.findIndex(f => key(...f) === p.of);
+      best.splice(i < 0 ? best.length : i+1, 0, p.f);
+    });
+    return best.map(orient);
+  }
+  function hint(a,b){
+    const f = PRI.indexOf(a) <= PRI.indexOf(b) ? a : b;
+    const n = f===a ? b : a, p = a*b;
+    switch(f){
+      case 1: return `Anything times 1 stays the same: ${n}.`;
+      case 2: return `Times 2 means double it: ${n} + ${n} = ${p}.`;
+      case 10: return `Times 10: put a zero on the end. ${n} becomes ${p}.`;
+      case 5: return `Times 5 is half of times 10. 10 × ${n} = ${10*n}, and half of that is ${p}.`;
+      case 11: return n<=9 ? `11 times a single digit repeats the digit: ${n}${n}.` : `10 × ${n} = ${10*n}, plus one more ${n} = ${p}.`;
+      case 9: return `Do 10 × ${n} = ${10*n}, then take away one ${n}. That leaves ${p}.`;
+      case 4: return `Double, then double again: ${n} → ${2*n} → ${p}.`;
+      case 3: return `Double ${n} to get ${2*n}, then add one more ${n}: ${p}.`;
+      case 6: return `5 × ${n} = ${5*n}, plus one more ${n} = ${p}.`;
+      case 8: return `Double three times: ${n} → ${2*n} → ${4*n} → ${p}.`;
+      case 12: return `10 × ${n} = ${10*n}, plus 2 × ${n} = ${2*n}. Together that's ${p}.`;
+      case 7: return `5 × ${n} = ${5*n}, plus 2 × ${n} = ${2*n}. Together that's ${p}.`;
+    }
+    return '';
+  }
+  function sectorCount(n){ let c=0; for(let m=1;m<=12;m++) if(stateOf(key(n,m))==='captured') c++; return c; }
+
+  // ---------- enemy bases: each table split into x1-4, x5-8, x9-12 ----------
+  const BASE_KIND = ['Outpost','Fort','Stronghold'];
+  const FLAG = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 15V2"/><path d="M3 2.5h9l-2.2 3 2.2 3H3z"/></svg>';
+  const baseFacts = (n,g) => [1,2,3,4].map(i => [n, g*4+i]);
+  const baseTaken = (n,g) => baseFacts(n,g).every(f => stateOf(key(...f))==='captured');
+  const baseId = (n,g) => n+'-'+g;
+  const baseName = (n,g) => `${SECTORS[n-1]} ${BASE_KIND[g]}`;
+  function takenBases(){ const out=[]; for(let n=1;n<=12;n++) for(let g=0;g<3;g++) if(baseTaken(n,g)) out.push(baseId(n,g)); return out; }
+  // the uncaptured base with the most captured facts, to steer practice toward a win
+  function nearestBase(){
+    let best = null, bestC = -1;
+    for(let n=1;n<=12;n++) for(let g=0;g<3;g++){
+      if(baseTaken(n,g)) continue;
+      const c = baseFacts(n,g).filter(f => stateOf(key(...f))==='captured').length;
+      const score = c*100 - diff([n, g*4+4]);
+      if(c > 0 && score > bestC){ bestC = score; best = [n,g]; }
+    }
+    return best;
+  }
+
+  // ---------- ranks ----------
+  function rankIndex(m){ let r=0; RANKS.forEach(([t],i)=>{ if(m>=t) r=i; }); return r; }
+  function badgeSvg(idx){
+    if(idx <= 4){
+      const n = Math.max(1, idx);
+      let s = '<svg viewBox="0 0 36 36" fill="none" stroke="var(--khaki)" stroke-width="3.2" stroke-linejoin="round">';
+      for(let i=0;i<n;i++){ const y = 10 + i*6 - (n-1)*3; s += `<path d="M6 ${y+8} L18 ${y} L30 ${y+8}"/>`; }
+      return s + '</svg>';
+    }
+    const stars = Math.min(5, idx-4), size = 36/stars;
+    let s = '<svg viewBox="0 0 36 36" fill="var(--amber)">';
+    for(let i=0;i<stars;i++){
+      const cx = size*i + size/2, cy = 18, r = Math.min(size*.48, 13);
+      let pts = '';
+      for(let k=0;k<10;k++){ const ang = -Math.PI/2 + k*Math.PI/5; const rr = k%2 ? r*.42 : r; pts += `${(cx+rr*Math.cos(ang)).toFixed(2)},${(cy+rr*Math.sin(ang)).toFixed(2)} `; }
+      s += `<polygon points="${pts}"/>`;
+    }
+    return s + '</svg>';
+  }
+
+  // ---------- sound ----------
+  let actx = null;
+  function tone(freq, dur, type, vol, delay){
+    if(!S.sound) return;
+    try{
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      const t = actx.currentTime + (delay||0);
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = type || 'square'; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(vol || .05, t);
+      g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+      o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + dur);
+    }catch(e){}
+  }
+  const sfx = {
+    hit(){ tone(220,.12,'square',.06); tone(110,.2,'sawtooth',.05,.05); },
+    crit(){ tone(440,.08,'square',.05); tone(660,.08,'square',.05,.08); tone(880,.14,'square',.05,.16); },
+    boom(){ tone(90,.35,'sawtooth',.08); tone(60,.4,'square',.05,.05); },
+    miss(){ tone(160,.25,'triangle',.07); },
+    win(){ [523,659,784,1046].forEach((f,i)=>tone(f,.18,'square',.05,i*.12)); },
+    key(){ tone(900,.025,'square',.02); },
+    beep(){ tone(1200,.06,'sine',.04); }
+  };
+  function updateSound(){ $$('.snd').forEach(b => b.textContent = S.sound ? 'Sound on' : 'Sound off'); }
+  $$('.snd').forEach(b => b.onclick = () => { S.sound = !S.sound; save(); updateSound(); });
+
+  // ---------- navigation ----------
+  let current = 'home';
+  function show(name){ current = name; for(const k in screens) screens[k].hidden = k!==name; window.scrollTo(0,0); }
+  function goHome(){ stopArcade(); stopAir(); stopDefend(); run = null; conv = null; BF.sel = null; show('home'); renderHome(); setTimeout(maybeAttack, 600); }
+  let armedBtn = null, armTimer = null;
+  function disarm(){ if(armedBtn){ armedBtn.classList.remove('armed'); armedBtn.innerHTML = '&#9664; HQ'; } armedBtn = null; clearTimeout(armTimer); }
+  $$('.back').forEach(b => b.onclick = () => {
+    if(armedBtn !== b){ disarm(); armedBtn = b; b.classList.add('armed'); b.textContent = 'Tap again to leave'; armTimer = setTimeout(disarm, 2500); return; }
+    disarm(); goHome();
+  });
+
+  const MISSIONS = [
+    { id:'bunker', name:'Bunker Assault', desc:'Multiply two playing cards and fire at the enemy bunker.', meta:'Typing · captures facts', start:() => startTyped('bunker') },
+    { id:'code', name:'Code Breaker', desc:'Crack a secret enemy message one letter at a time.', meta:'Typing · captures facts', start:() => startTyped('code') },
+    { id:'air', name:'Air Defense', desc:'Radar shows a number. Shoot down the jet whose fact makes it.', meta:'Tapping · facts in reverse', start:startAir },
+    { id:'convoy', name:'Supply Convoy', desc:'Drive supplies to the front by skip-counting one times table.', meta:'Tapping · pick your table', start:startConvoy }
+  ];
+
+  // ---------- HQ ----------
+  function ordersToday(){ if(S.orders.date !== today()) S.orders = { date:today(), count:0 }; return S.orders; }
+  function renderHome(){
+    const r = rankIndex(S.medals);
+    $('#rankName').textContent = RANKS[r][1];
+    $('#badge').innerHTML = badgeSvg(r);
+    const next = RANKS[r+1];
+    if(next){
+      $('#rankBar').style.width = Math.round((S.medals-RANKS[r][0])/(next[0]-RANKS[r][0])*100)+'%';
+      $('#rankMeta').textContent = `${S.medals} medals · ${next[0]-S.medals} more to ${next[1]}`;
+    } else { $('#rankBar').style.width = '100%'; $('#rankMeta').textContent = `${S.medals} medals · highest rank reached`; }
+
+    let captured = 0;
+    ALL.forEach(f => { if(stateOf(key(...f))==='captured') captured++; });
+    $('#victory').hidden = captured < 78;
+
+    const o = ordersToday();
+    $('#pips').innerHTML = [0,1,2].map(i => `<span class="pip${i<o.count?' on':''}">${i<o.count?'✓':''}</span>`).join('');
+    $('#ordersText').textContent = o.count >= 3 ? 'Orders complete. Bonus earned. Extra missions still earn medals.' : `Complete 3 missions today for a 5-medal bonus. ${3-o.count} to go.`;
+
+    $('#missions').innerHTML = MISSIONS.map(m => `<button class="mission" type="button" data-m="${m.id}">
+      <span class="ico">${ICONS[m.id]}</span>
+      <span class="txt"><h3>${m.name}</h3><span class="muted" style="font-size:.95rem">${m.desc}</span><span class="meta">${m.meta}</span></span>
+      <span class="go" aria-hidden="true">&#9654;</span></button>`).join('');
+    $$('.mission').forEach(b => b.onclick = () => MISSIONS.find(m => m.id===b.dataset.m).start());
+
+    $('#coins').textContent = S.coins;
+    $('#games').innerHTML = Object.entries(GAMES).map(([id,g]) => `<button class="game" type="button" data-g="${id}" ${S.coins<(g.cost||COST)?'disabled':''}>
+      ${g.icon}<b>${g.name}</b><span class="muted" style="font-size:.9rem">${g.blurb}</span>
+      <span class="price">${S.coins>=(g.cost||COST) ? `Play · ${g.cost||COST} coins` : `Need ${(g.cost||COST)-S.coins} more coins`}</span>
+      ${S.best && S.best[id] ? `<span class="muted" style="font-size:.85rem">Best: ${S.best[id]}</span>` : ''}</button>`).join('');
+    $$('.game').forEach(b => b.onclick = () => startArcade(b.dataset.g));
+    let freed = 0; for(let n=1;n<=12;n++) if(sectorCount(n)===12) freed++;
+    $('#bfCount').textContent = `${takenBases().length} of 36 bunkers · ${freed} of 12 regions`;
+    drawBattlefield();
+    renderBfInfo();
+    renderAwards();
+    $('#bkWhen').textContent = S.lastBackup ? `Last copied ${new Date(S.lastBackup).toLocaleDateString(undefined, { month:'short', day:'numeric' })}` : 'Not backed up yet';
+    const arms = ALL.filter(f => info(key(...f)).lv >= 3);
+    $('#armCount').textContent = `${arms.length} special weapon${arms.length===1?'':'s'}`;
+    const groups = WEAPONS.map(([d,name]) => [name, arms.filter(f => weaponFor(info(key(...f)).int) === name)]);
+    if(!armPick || !groups.find(([n,l]) => n===armPick && l.length)){ const top = [...groups].reverse().find(([n,l]) => l.length); armPick = top ? top[0] : null; }
+    $('#armory').innerHTML = groups.map(([name, l]) => `<button type="button" class="wpn${l.length?'':' off'}${name===armPick?' sel':''}" data-w="${name}" style="color:${l.length?'var(--khaki)':'var(--muted)'}">${WICON[name]}<span class="wn">${name}</span><span class="wc">${l.length}</span></button>`).join('');
+    const pick = groups.find(([n]) => n===armPick);
+    $('#armSel').innerHTML = pick && pick[1].length ? `<div class="chips">${pick[1].map(([a,b]) => `<span class="chip gold">${a} × ${b}</span>`).join('')}</div>` : '<span class="muted">Master a fact to unlock your first weapon.</span>';
+    $$('.wpn').forEach(btn => btn.onclick = () => { if(btn.classList.contains('off')) return; armPick = btn.dataset.w; renderHome(); });
+  }
+
+  // ---------- the battlefield map ----------
+  const BF = { W:400, H:600, built:false, sel:null };
+  const TERRAIN = {1:'plains',2:'marsh',3:'forest',4:'plains',5:'forest',6:'hills',7:'mountains',8:'marsh',9:'mountains',10:'hills',11:'forest',12:'city'};
+  const LAYOUT = {2:[78,515],1:[200,525],10:[322,515],5:[78,382],3:[200,388],4:[322,382],11:[78,245],6:[200,252],9:[322,245],8:[78,108],12:[200,102],7:[322,108]};
+  const LAND = {plains:[92,100,64], forest:[58,76,46], hills:[104,100,68], mountains:[104,98,84], marsh:[62,82,76], city:[84,84,76]};
+  const BOFF = [[-36,14],[36,14],[0,50]];
+  function mkRng(seed){ return () => ((seed = (Math.imul(seed,1664525)+1013904223)>>>0) / 4294967296); }
+  function buildBF(){
+    const { W, H } = BF, rnd = mkRng(20261024);
+    const LAT = Array.from({length:1024}, rnd);
+    const sm = t => t*t*(3-2*t);
+    const vn = (x,y) => { const xi=Math.floor(x), yi=Math.floor(y), u=sm(x-xi), v=sm(y-yi);
+      const g=(i,j)=>LAT[((j&31)<<5)|(i&31)]; const a=g(xi,yi),b=g(xi+1,yi),c=g(xi,yi+1),d=g(xi+1,yi+1);
+      return a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v; };
+    const fbm = (x,y) => vn(x,y)*.6 + vn(x*2.1+7,y*2.1+3)*.3 + vn(x*4.3+1,y*4.3+9)*.1;
+    const C = {};
+    for(let n=1;n<=12;n++) C[n] = [LAYOUT[n][0]+(rnd()-.5)*20, LAYOUT[n][1]+(rnd()-.5)*16];
+    const reg = new Uint8Array(W*H), hgt = new Float32Array(W*H);
+    for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+      const wx = x + (fbm(x/55,y/55)-.5)*60, wy = y + (fbm(x/55+11,y/55+5)-.5)*60;
+      let best=1, bd=1e9;
+      for(let n=1;n<=12;n++){ const dx=(wx-C[n][0]), dy=(wy-C[n][1])*1.05, d=dx*dx+dy*dy; if(d<bd){ bd=d; best=n; } }
+      const t = TERRAIN[best];
+      let h = fbm(x/85+3,y/85+3);
+      if(t==='mountains') h += .45*fbm(x/22+5,y/22+5);
+      if(t==='hills') h += .22*fbm(x/30+2,y/30+8);
+      reg[y*W+x] = best; hgt[y*W+x] = h;
+    }
+    const base = new Uint8ClampedArray(W*H*4);
+    for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+      const i = y*W+x, n = reg[i], c = LAND[TERRAIN[n]], h = hgt[i];
+      let k = (h-.55)*70;
+      const lv = Math.floor(h*10);
+      const contour = (x<W-1 && Math.floor(hgt[i+1]*10)!==lv) || (y<H-1 && Math.floor(hgt[i+W]*10)!==lv);
+      if(contour) k += 22;
+      const border = (x<W-1 && reg[i+1]!==n) || (y<H-1 && reg[i+W]!==n) || (x>0 && reg[i-1]!==n) || (y>0 && reg[i-W]!==n);
+      const p = i*4;
+      if(border){ base[p]=24; base[p+1]=26; base[p+2]=19; }
+      else { base[p]=c[0]+k; base[p+1]=c[1]+k; base[p+2]=c[2]+k*.8; }
+      base[p+3]=255;
+    }
+    // river winding down the map between the left and centre columns
+    const river = [];
+    for(let y=-10;y<=H+10;y+=6) river.push([140 + (fbm(y/110+4, 2.5)-.5)*80, y]);
+    const bunkers = [];
+    for(let n=1;n<=12;n++) for(let g=0;g<3;g++) bunkers.push({ n, g, x:C[n][0]+BOFF[g][0], y:C[n][1]+BOFF[g][1] });
+    const near = (x,y) => bunkers.some(b => (b.x-x)**2+(b.y-y)**2 < 27*27) || river.some(([rx,ry]) => (rx-x)**2+(ry-y)**2 < 11*11);
+    const deco = [];
+    const COUNT = { forest:46, plains:8, hills:14, mountains:12, marsh:22, city:16 };
+    for(let n=1;n<=12;n++){
+      const t = TERRAIN[n];
+      let made = 0, tries = 0;
+      while(made < COUNT[t] && tries++ < 900){
+        const x = C[n][0] + (rnd()-.5)*150, y = C[n][1] + (rnd()-.5)*150;
+        if(x<6||y<6||x>W-6||y>H-6) continue;
+        if(reg[Math.floor(y)*W+Math.floor(x)] !== n) continue;
+        if(Math.abs(x-C[n][0])<40 && y>C[n][1]-50 && y<C[n][1]-14) continue; // label
+        if(near(x,y)) continue;
+        deco.push({ t, x, y, s:.8+rnd()*.5 }); made++;
+      }
+    }
+    deco.sort((a,b) => a.y-b.y);
+    Object.assign(BF, { C, reg, base, river, bunkers, deco, built:true, off:document.createElement('canvas') });
+    BF.off.width = W; BF.off.height = H;
+  }
+  function tok(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+  function drawBattlefield(){
+    if(!BF.built) buildBF();
+    const { W, H } = BF, cv = $('#bf');
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    if(cv.width !== W*dpr){ cv.width = W*dpr; cv.height = H*dpr; }
+    const ctx = cv.getContext('2d');
+    const lib = {}, fog = {};
+    for(let n=1;n<=12;n++){
+      lib[n] = sectorCount(n)===12;
+      let seen = false; for(let m=1;m<=12;m++) if(info(key(n,m)).seen) seen = true;
+      fog[n] = !seen;
+    }
+    const octx = BF.off.getContext('2d'), img = octx.createImageData(W,H), d = img.data, src = BF.base, reg = BF.reg;
+    for(let i=0;i<W*H;i++){
+      const p=i*4, n=reg[i];
+      let r=src[p], g=src[p+1], b=src[p+2];
+      if(lib[n]){ r = r*.7 + 139*.3; g = g*.7 + 189*.3; b = b*.7 + 82*.3; }
+      else if(fog[n]){ r*=.62; g*=.62; b*=.66; }
+      d[p]=r; d[p+1]=g; d[p+2]=b; d[p+3]=255;
+    }
+    octx.putImageData(img,0,0);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(BF.off, 0, 0);
+
+    // river
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    const path = () => { ctx.beginPath(); BF.river.forEach(([x,y],i) => i ? ctx.lineTo(x,y) : ctx.moveTo(x,y)); };
+    path(); ctx.strokeStyle = '#2d4446'; ctx.lineWidth = 9; ctx.stroke();
+    path(); ctx.strokeStyle = '#4c6e70'; ctx.lineWidth = 6; ctx.stroke();
+    path(); ctx.strokeStyle = 'rgba(160,190,185,.35)'; ctx.lineWidth = 1.5; ctx.stroke();
+
+    // terrain features
+    for(const o of BF.deco){
+      const { x, y, s } = o, dim = fog[BF.reg[Math.floor(y)*W+Math.floor(x)]] ? .55 : 1;
+      ctx.globalAlpha = dim;
+      if(o.t==='forest' || o.t==='plains'){
+        ctx.fillStyle = '#1f2b18'; ctx.beginPath(); ctx.arc(x+1, y+1.5, 3.4*s, 0, 7); ctx.fill();
+        ctx.fillStyle = o.t==='forest' ? '#3d5a2c' : '#4f6634'; ctx.beginPath(); ctx.arc(x, y, 3.2*s, 0, 7); ctx.fill();
+        ctx.fillStyle = 'rgba(200,220,150,.18)'; ctx.beginPath(); ctx.arc(x-1, y-1, 1.4*s, 0, 7); ctx.fill();
+      } else if(o.t==='mountains'){
+        const w = 9*s, h = 10*s;
+        ctx.fillStyle = '#5b5446'; ctx.beginPath(); ctx.moveTo(x-w, y+h/2); ctx.lineTo(x, y-h/2); ctx.lineTo(x+w, y+h/2); ctx.fill();
+        ctx.fillStyle = '#7d7562'; ctx.beginPath(); ctx.moveTo(x, y-h/2); ctx.lineTo(x+w, y+h/2); ctx.lineTo(x+w*.2, y+h/2); ctx.fill();
+        ctx.fillStyle = '#ddd6c2'; ctx.beginPath(); ctx.moveTo(x-w*.3, y-h*.2); ctx.lineTo(x, y-h/2); ctx.lineTo(x+w*.3, y-h*.2); ctx.fill();
+      } else if(o.t==='hills'){
+        ctx.strokeStyle = 'rgba(30,30,20,.55)'; ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.arc(x, y+4*s, 6*s, Math.PI*1.15, Math.PI*1.85); ctx.stroke();
+      } else if(o.t==='marsh'){
+        ctx.strokeStyle = 'rgba(150,175,140,.6)'; ctx.lineWidth = 1;
+        ctx.beginPath(); for(const dx of [-3,0,3]){ ctx.moveTo(x+dx, y+3); ctx.lineTo(x+dx*1.3, y-3-Math.abs(dx)*-0.3); } ctx.stroke();
+        ctx.strokeStyle = 'rgba(90,120,120,.5)'; ctx.beginPath(); ctx.moveTo(x-5, y+4); ctx.lineTo(x+5, y+4); ctx.stroke();
+      } else if(o.t==='city'){
+        const w = 6*s, h = 5*s+((x*7)%4);
+        ctx.fillStyle = '#2c2c27'; ctx.fillRect(x-w/2+1, y-h/2+1, w, h);
+        ctx.fillStyle = '#9c9686'; ctx.fillRect(x-w/2, y-h/2, w, h);
+        ctx.fillStyle = '#6d685c'; ctx.fillRect(x-w/2, y+h/2-2, w, 2);
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    // bunkers with their 4 facts around them
+    const col = { captured:tok('--good'), contested:tok('--amber'), fire:tok('--bad'), unscouted:'#2a2f22' };
+    const amber = tok('--amber'), bad = tok('--bad'), ink = tok('--ink'), fg = tok('--fg');
+    for(const b of BF.bunkers){
+      const facts = baseFacts(b.n, b.g), taken = baseTaken(b.n, b.g);
+      facts.forEach((f, i) => {
+        const ang = Math.PI*(1.12 + i*0.253), fx = b.x + Math.cos(ang)*17, fy = b.y + 2 + Math.sin(ang)*17;
+        const st = stateOf(key(...f));
+        ctx.beginPath(); ctx.arc(fx, fy, 4.2, 0, 7);
+        ctx.fillStyle = col[st]; ctx.fill();
+        ctx.lineWidth = 1.2; ctx.strokeStyle = st==='unscouted' ? 'rgba(200,185,138,.55)' : 'rgba(0,0,0,.5)'; ctx.stroke();
+      });
+      // dome
+      ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(b.x+1.5, b.y+8, 12, 3.5, 0, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(b.x, b.y+7, 10, Math.PI, 0); ctx.closePath();
+      ctx.fillStyle = taken ? '#c8b98a' : '#34342c'; ctx.fill();
+      ctx.lineWidth = 1.5; ctx.strokeStyle = taken ? '#5c5236' : bad; ctx.stroke();
+      ctx.fillStyle = taken ? '#5c5236' : bad; ctx.fillRect(b.x-5, b.y+1, 10, 2);
+      if(taken){
+        ctx.strokeStyle = ink; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(b.x+2, b.y-3); ctx.lineTo(b.x+2, b.y-17); ctx.stroke();
+        ctx.fillStyle = amber; ctx.beginPath(); ctx.moveTo(b.x+2.5, b.y-17); ctx.lineTo(b.x+13, b.y-14); ctx.lineTo(b.x+2.5, b.y-10); ctx.fill();
+      }
+      if(BF.sel && BF.sel[0]===b.n && BF.sel[1]===b.g){
+        ctx.setLineDash([3,3]); ctx.strokeStyle = amber; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(b.x, b.y+2, 25, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+      }
+    }
+
+    // region labels
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round';
+    for(let n=1;n<=12;n++){
+      const [cx, cy] = BF.C[n];
+      ctx.font = `22px 'Black Ops One', Impact, sans-serif`;
+      ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(20,22,15,.85)';
+      const t = `${n}s`;
+      ctx.strokeText(t, cx, cy-27); ctx.fillStyle = lib[n] ? tok('--good') : fg; ctx.fillText(t, cx, cy-27);
+      ctx.font = `600 11px 'Barlow Condensed', 'Arial Narrow', sans-serif`;
+      const sub = (lib[n] ? 'LIBERATED · ' : '') + SECTORS[n-1].toUpperCase();
+      ctx.lineWidth = 3; ctx.strokeText(sub, cx, cy-15); ctx.fillStyle = lib[n] ? tok('--good') : tok('--khaki'); ctx.fillText(sub, cx, cy-15);
+    }
+    cv.setAttribute('aria-label', `Battlefield map: ${takenBases().length} of 36 bunkers captured`);
+  }
+  function renderBfInfo(){
+    const el = $('#bfInfo');
+    let target = BF.sel, title = 'Scouting report';
+    if(!target){ target = nearestBase(); title = 'Next target'; }
+    if(!target){
+      for(let n=1;n<=12 && !target;n++) for(let g=0;g<3;g++) if(!baseTaken(n,g)){ target=[n,g]; break; }
+      title = 'Next target';
+    }
+    if(!target){ el.className = 'bfinfo'; el.innerHTML = `${FLAG}<div class="txt"><b>Every bunker is yours</b><span class="muted">Keep playing to hold the line.</span></div>`; return; }
+    const [n,g] = target, taken = baseTaken(n,g);
+    const facts = baseFacts(n,g), have = facts.filter(f => stateOf(key(...f))==='captured').length;
+    const chips = facts.map(([a,b]) => { const st = stateOf(key(a,b)); return `<span class="chip c-${st}">${a} × ${b} = ${st==='captured' ? a*b : '?'}</span>`; }).join('');
+    el.className = 'bfinfo' + (taken ? '' : ' enemy');
+    el.innerHTML = `${FLAG}<div class="txt"><span class="label" style="color:${taken?'var(--amber)':'var(--bad)'}">${title}</span><b>${baseName(n,g)}</b><span class="muted">${taken ? 'Captured. Your flag flies here.' : `Enemy held · ${have} of 4 facts captured`}</span><div class="chips">${chips}</div></div>`;
+  }
+  $('#bf').addEventListener('click', e => {
+    if(!BF.built) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    const x = (e.clientX - r.left)/r.width*BF.W, y = (e.clientY - r.top)/r.height*BF.H;
+    let best = null, bd = 30*30;
+    for(const b of BF.bunkers){ const d = (b.x-x)**2 + (b.y-y)**2; if(d < bd){ bd = d; best = b; } }
+    if(!best && BF.river.some(([rx,ry]) => (rx-x)**2 + (ry-y)**2 < 12*12)){
+      BF.fish = (BF.fish||0) + 1;
+      tone(400 + BF.fish*120, .08, 'sine', .05);
+      if(BF.fish >= 3){ BF.fish = 0; if(!award('fishing')) toast('Splash!', 'A fish jumps out of the river and salutes.', true); renderAwards(); }
+    }
+    BF.sel = best ? [best.n, best.g] : null;
+    drawBattlefield(); renderBfInfo();
+  });
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if(current==='home') drawBattlefield(); });
+
+  // ---------- typed missions ----------
+  let run = null, entry = '';
+  function startTyped(mode){
+    if(mode === 'bunker'){
+      run = { mode, queue: buildBunker().map(f => ({ f })) };
+    } else {
+      const RARE = ['THE CAT IS A DOUBLE AGENT','GENERAL LOVES PANCAKES','SECRET BASE UNDER THE COUCH'];
+      const rare = Math.random() < 0.06;
+      const msg = rare ? RARE[Math.floor(Math.random()*RARE.length)] : MESSAGES[Math.floor(Math.random()*MESSAGES.length)];
+      const letters = [...new Set(msg.replace(/ /g,''))];
+      const facts = pickFacts(letters.length);
+      run = { mode, msg, rare, letters, solved:new Set(), queue: shuffle(letters.map((L,i) => ({ f:facts[i], letter:L }))) };
+    }
+    missionAwards = [];
+    Object.assign(run, { cur:null, hits:0, fast:0, misses:0, newly:new Set(), missed:new Set(), phase:'aim', t0:0, log:[], started:Date.now(), specials:[], streak:0, drops:0 });
+    disarm(); updateSound(); show('typed'); nextCard();
+  }
+  function cardHtml(n, special){
+    const [suit, red] = SUITS[Math.floor(Math.random()*4)];
+    return `<div class="pcard deal${red?' red':''}${special?' special':''}" aria-label="${n}"><span class="corner tl">${n}<br>${suit}</span><span class="num">${n}</span><span class="corner br">${n}<br>${suit}</span></div>`;
+  }
+  function renderProgress(){
+    if(run.mode === 'bunker'){
+      const remaining = run.queue.length + (run.phase==='done' ? 0 : 1);
+      const total = run.hits + remaining;
+      const pct = Math.round(remaining/total*100);
+      const curHit = run.phase==='wait-hit';
+      const shown = curHit ? Math.round((remaining-1)/total*100) : pct;
+      $('#tProgress').innerHTML = `<div class="enemy" id="enemy"><div style="display:flex; justify-content:space-between"><span class="label">Enemy bunker</span><span class="label">${shown}%</span></div><div class="bar"><i style="width:${shown}%"></i></div></div>`;
+      $('#tCounter').textContent = `Card ${Math.min(run.hits+1, total)} of ${total}`;
+    } else {
+      const words = run.msg.split(' ');
+      const curL = run.cur && !run.solved.has(run.cur.letter) ? run.cur.letter : null;
+      $('#tProgress').innerHTML = `<span class="label" style="text-align:center">Intercepted enemy message</span><div class="board">${words.map(w => `<div class="word">${[...w].map(ch => run.solved.has(ch) ? `<span class="lt">${ch}</span>` : `<span class="lt${ch===curL?' cur':''}"></span>`).join('')}</div>`).join('')}</div>`;
+      $('#tCounter').textContent = run.cur && run.cur.retest ? 'Re-check' : `Letter ${Math.min(run.solved.size+1, run.letters.length)} of ${run.letters.length}`;
+    }
+  }
+  function nextCard(){
+    if(!run) return;
+    if(!run.queue.length){ endTyped(); return; }
+    run.cur = run.queue.shift(); run.phase = 'aim'; entry = '';
+    const [a,b] = run.cur.f;
+    const fi = info(key(a,b));
+    run.cur.special = fi.lv >= 3;
+    $('#table').innerHTML = cardHtml(a, run.cur.special) + '<span class="times">×</span>' + cardHtml(b, run.cur.special);
+    $('#tFeedback').innerHTML = run.cur.special && !run.cur.retest ? `<span class="weapon-tag pop">Special weapon · ${weaponFor(fi.int)}</span>` : run.cur.retest ? '<span class="label" style="color:var(--amber)">Re-check · you missed this one a moment ago</span>' : '';
+    renderEntry(); renderProgress();
+    run.t0 = performance.now();
+  }
+  function renderEntry(state){
+    const el = $('#entry');
+    el.className = 'entry' + (state ? ' '+state : '');
+    el.innerHTML = entry ? entry : '<span class="cursor">_</span>';
+  }
+  function press(k){
+    if(!run || run.phase.startsWith('wait')) return;
+    if(k==='fire'){ fire(); return; }
+    if(k==='del'){ entry = entry.slice(0,-1); renderEntry(); return; }
+    if(entry.length >= 3 || (entry==='' && k==='0')) return;
+    entry += k; sfx.key(); renderEntry();
+  }
+  function fire(){
+    if(!entry) return;
+    const [a,b] = run.cur.f, p = a*b, ans = parseInt(entry,10), k = key(a,b);
+    const code = run.mode === 'code';
+
+    if(run.phase === 'fix'){
+      if(ans === p){
+        run.phase = 'wait'; renderEntry('good'); sfx.hit();
+        if(code && run.cur.letter){ run.solved.add(run.cur.letter); renderProgress(); }
+        $('#tFeedback').innerHTML = (code && run.cur.letter)
+          ? `<span class="stamp good pop">Letter cracked</span><span class="muted">Keep that one in mind: ${a} × ${b} = ${p}.</span>`
+          : `<span class="stamp good pop">Reloaded</span><span class="muted">${a} × ${b} will come back soon.</span>`;
+        setTimeout(nextCard, 1100);
+      } else { sfx.miss(); entry=''; renderEntry('bad'); }
+      return;
+    }
+
+    const secs = (performance.now() - run.t0)/1000;
+    const i = Object.assign({ lv:0, seen:false, right:0, wrong:0 }, S.facts[k]);
+    run.log.push({ a, b, ok: ans===p, ms: Math.round(secs*1000), ans, k:'t' });
+    if(ans === p){
+      const fast = secs < FAST, wasCaptured = i.lv >= 3, now = Date.now(), td = today(), oldW = weaponFor(i.int);
+      if(!wasCaptured){
+        if(fast){
+          if(i.lastFastDay !== td){ i.fastDays = (i.fastDays||0) + 1; i.lastFastDay = td; }
+          // captured only after fast, correct answers on two different days
+          if(i.fastDays >= 2){ i.lv = 3; i.int = 1; i.due = now + DAY; i.ever = 1; }
+          else i.lv = Math.max(i.lv, 2);
+        } else i.lv = Math.max(i.lv, 1);
+      } else if((i.due||0) <= now){
+        // a scheduled review: fast doubles the gap, slow shortens it (but keeps the capture)
+        if(fast){ i.int = Math.min(60, Math.max(1, (i.int||1)*2)); i.lv = Math.min(5, i.lv+1); }
+        else i.int = Math.max(1, Math.floor((i.int||1)/2));
+        i.due = now + i.int*DAY;
+      }
+      i.seen = true; i.right++; S.facts[k] = i; save();
+      if(!wasCaptured && i.lv >= 3 && !run.missed.has(k)) run.newly.add(k);
+      run.hits++; if(fast) run.fast++;
+      run.streak = fast ? run.streak + 1 : 0;
+      if(secs < 1.5 && [6,7,8,9].some(n => (a===n && b>2) || (b===n && a>2))) award('lightning');
+      if(run.streak >= 10) award('sharpshooter');
+      if(run.cur.retest && fast) award('comeback');
+      if(!wasCaptured && i.lv >= 3){ if(a===7 || b===7) award('seven'); if((i.conf||[]).length) award('mixup'); }
+      if(wasCaptured && fast && weaponFor(i.int) === 'Artillery' && oldW !== 'Artillery') award('bigguns');
+      // surprise supply drop: only on fast, correct answers, never more than twice a mission
+      const drop = fast && run.drops < 2 && Math.random() < 0.08;
+      if(drop){ run.drops++; S.coins = (S.coins||0) + 2; save(); }
+      renderEntry('good');
+      if(code){ if(run.cur.letter) run.solved.add(run.cur.letter); run.phase='wait'; renderProgress(); }
+      else { run.phase='wait-hit'; renderProgress(); const en=$('#enemy'); en && en.classList.add('hit'); }
+      const newW = weaponFor(i.int), upgraded = wasCaptured && fast && newW !== oldW;
+      if(wasCaptured){
+        run.specials.push({ k, a, b, fast, weapon:newW, upgradedFrom: upgraded ? oldW : null, secs });
+        if(fast){
+          sfx.crit(); tone(70,.5,'sawtooth',.07,.1);
+          $('#tFeedback').innerHTML = `<span class="stamp fast pop">${oldW} fired!</span><span class="muted">${a} \u00d7 ${b} = ${p} in ${secs.toFixed(1)}s. ${upgraded ? `<b style="color:var(--amber)">Upgraded to ${newW}.</b> ` : ''}+2 medals, +1 coin</span>`;
+        } else {
+          sfx.hit();
+          $('#tFeedback').innerHTML = `<span class="stamp good pop">${oldW} hit</span><span class="muted">Right answer in ${secs.toFixed(1)}s. Under 5s fires it at full power.</span>`;
+        }
+      } else if(i.lv >= 3){
+        sfx.crit();
+        $('#tFeedback').innerHTML = `<span class="stamp fast pop">New weapon unlocked!</span><span class="muted">${a} \u00d7 ${b} = ${p}, fast on two different days. It joins your Armory as a Mortar.</span>`;
+      } else if(fast){
+        sfx.crit();
+        $('#tFeedback').innerHTML = `<span class="stamp fast pop">${code?'Cracked fast!':'Critical hit!'}</span><span class="muted">${secs.toFixed(1)}s. +1 medal${i.fastDays===1 ? '. One more fast day unlocks it as a weapon' : ''}</span>`;
+      }
+      else { sfx.hit(); $('#tFeedback').innerHTML = `<span class="stamp good pop">${code?'Letter cracked!':'Direct hit!'}</span>`; }
+      if(drop){ $('#tFeedback').insertAdjacentHTML('beforeend', '<span class="supply pop">Surprise supply drop! +2 coins</span>'); tone(988,.08,'triangle',.05,.25); tone(1319,.15,'triangle',.05,.33); }
+      setTimeout(nextCard, drop ? 1300 : fast ? 650 : 800);
+    } else {
+      run.streak = 0;
+      i.seen = true; i.lv = 0; i.wrong++; i.fastDays = 0; i.lastFastDay = null; i.int = 0; i.due = 0;
+      // remember which fact his wrong answer belongs to, to practice the pair together
+      const mix = ALL.filter(([x,y]) => x*y === ans && key(x,y) !== k && (x===a || x===b || y===a || y===b));
+      if(mix.length){ i.conf = [...new Set([key(...mix[0]), ...(i.conf||[])])].slice(0,3); }
+      S.facts[k] = i; save();
+      run.misses++; run.missed.add(k); run.newly.delete(k);
+      run.queue.splice(Math.min(2, run.queue.length), 0, { f:[b,a], retest:true });
+      run.phase = 'fix'; sfx.miss(); entry = ''; renderEntry('bad'); renderProgress();
+      $('#tFeedback').innerHTML = `<div class="intel pop">
+        <span class="label" style="color:var(--bad)">${run.cur.special ? `${weaponFor(i.int || 1)} jammed &middot; back to training` : 'Missed &middot; Intel report'}</span>
+        <span class="fact">${a} × ${b} = ${p}</span>
+        <span class="tip">${hint(a,b)}</span>
+        <span class="todo">Type ${p} and fire to ${code ? 'crack the letter' : 'reload'}.</span></div>`;
+    }
+  }
+  function endTyped(){
+    const r = run; run = null;
+    const stars = r.misses===0 ? 3 : r.misses<=2 ? 2 : 1;
+    if(r.mode === 'code'){ S.decoded = (S.decoded||0) + 1; if(S.decoded >= 5) award('codebreaker'); if(r.rare) award('intercept'); }
+    const chips = [...r.newly].map(k => { const [a,b]=k.split('x'); return `<span class="chip">${a} × ${b} = ${a*b}</span>`; }).join('');
+    const firedFast = r.specials.filter(x => x.fast);
+    const parts = [[r.fast,'for fast shots'],[3,'for finishing']];
+    if(firedFast.length) parts.push([firedFast.length, 'bonus for special weapons']);
+    const specialsHtml = r.specials.length ? `<div class="panel"><h2>Special weapons fired</h2><div class="fired">${r.specials.map(x => `<div><span>${x.a} \u00d7 ${x.b} \u00b7 ${x.upgradedFrom || x.weapon}</span><span class="${x.upgradedFrom ? 'up' : x.fast ? '' : 'muted'}">${x.upgradedFrom ? `\u2191 ${x.weapon}` : x.fast ? `${x.secs.toFixed(1)}s` : 'slow, comes back sooner'}</span></div>`).join('')}</div></div>` : '';
+    if(r.newly.size) parts.push([2*r.newly.size,'for captures']);
+    const code = r.mode === 'code';
+    debrief({
+      mode: r.mode, log: r.log, started: r.started,
+      kicker: code ? 'Message decoded' : 'Bunker destroyed', bonusCoins: firedFast.length,
+      extra: (code ? `<div class="panel"><span class="label" style="text-align:center">The enemy said</span><div class="decoded">${r.msg}</div></div>` : '') + specialsHtml,
+      stars, misses:r.misses,
+      stats: [[r.hits, code ? 'First try' : 'Hits'], [r.fast,'Fast shots']],
+      parts,
+      captured: chips ? chips : '<p class="muted">No new facts captured this time. A fact is captured after fast, correct answers on two different days.</p>',
+      again: () => startTyped(r.mode)
+    });
+  }
+  $('#keypad').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if(b) press(b.dataset.k); });
+  document.addEventListener('keydown', e => {
+    if(current==='typed' && run){
+      if(/^[0-9]$/.test(e.key)){ press(e.key); e.preventDefault(); }
+      else if(e.key==='Backspace'){ press('del'); e.preventDefault(); }
+      else if(e.key==='Enter'){ press('fire'); e.preventDefault(); }
+    } else if(current==='convoy' && conv && /^[1-3]$/.test(e.key)){
+      const b = $$('.choice')[+e.key-1]; if(b && !b.disabled) b.click();
+    }
+  });
+
+  // ---------- air defense ----------
+  const WAVES = 10, LANES = [14, 112, 210];
+  let air = null;
+  const reduced = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function startAir(){
+    air = { log:[], started:Date.now(), targets: pickFacts(WAVES), wave:0, hits:0, first:0, misses:0, anims:[], timer:null, locked:false, tried:false };
+    disarm(); updateSound(); show('air'); nextWave();
+  }
+  function stopAir(){ if(!air) return; clearTimeout(air.timer); air.anims.forEach(a => { try{ a.cancel(); }catch(e){} }); air.anims = []; }
+  function decoys(t){
+    const p = t[0]*t[1];
+    const cand = shuffle(ALL.filter(f => f[0]*f[1] !== p && Math.abs(f[0]*f[1]-p) <= Math.max(8, p*.35)));
+    const out = [], used = new Set([p]);
+    for(const f of cand){ const q=f[0]*f[1]; if(!used.has(q)){ used.add(q); out.push(orient(f)); } if(out.length===2) break; }
+    for(const f of shuffle(ALL.slice())){ if(out.length===2) break; const q=f[0]*f[1]; if(!used.has(q)){ used.add(q); out.push(orient(f)); } }
+    return out;
+  }
+  function nextWave(){
+    if(!air) return;
+    stopAir();
+    if(air.wave >= WAVES){ endAir(); return; }
+    const t = air.targets[air.wave]; air.wave++; air.locked = false; air.tried = false; air.w0 = performance.now();
+    const p = t[0]*t[1];
+    $('#lock').textContent = p;
+    $('#aCounter').textContent = `Wave ${air.wave} of ${WAVES}`;
+    $('#aFeedback').innerHTML = '';
+    sfx.beep();
+    const sky = $('#sky'); sky.innerHTML = '';
+    const jets = shuffle([t, ...decoys(t)]);
+    const W = sky.clientWidth;
+    const dur = (reduced() ? 15000 : 10000) + Math.random()*1500;
+    let longest = 0;
+    jets.forEach((f, i) => {
+      const rtl = i === 1;
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'jet' + (rtl ? ' rtl' : '');
+      b.style.top = LANES[i] + 'px';
+      b.innerHTML = JET + `<span class="tag">${f[0]} × ${f[1]}</span>`;
+      b.setAttribute('aria-label', `${f[0]} times ${f[1]}`);
+      b.onclick = () => tapJet(b, f, p);
+      sky.appendChild(b);
+      const from = rtl ? W + 20 : -140, to = rtl ? -140 : W + 20;
+      const delay = i * 500;
+      const d = dur * (0.9 + i*0.08);
+      longest = Math.max(longest, delay + d);
+      air.anims.push(b.animate([{ left: from+'px' }, { left: to+'px' }], { duration:d, delay, fill:'both', easing:'linear' }));
+    });
+    air.timer = setTimeout(() => {
+      if(!air || air.locked) return;
+      if(!air.tried) air.log.push({ a:t[0], b:t[1], ok:false, ms:null, ans:null, k:'r' });
+      air.locked = true; air.misses++; sfx.miss();
+      $('#aFeedback').innerHTML = `<div class="intel pop"><span class="label" style="color:var(--bad)">It got away &middot; Intel report</span><span class="fact">${t[0]} × ${t[1]} = ${p}</span><span class="tip">${hint(t[0],t[1])}</span></div>`;
+      air.timer = setTimeout(nextWave, 3200);
+    }, longest);
+  }
+  function tapJet(btn, f, p){
+    if(!air || air.locked || btn.disabled) return;
+    const q = f[0]*f[1];
+    if(!air.tried){ const tf = air.targets[air.wave-1]; air.log.push({ a:tf[0], b:tf[1], ok:q===p, ms:Math.round(performance.now()-air.w0), ans:q, k:'r' }); }
+    if(q === p){
+      air.locked = true; clearTimeout(air.timer);
+      air.anims.forEach(a => a.pause());
+      btn.classList.add('boom'); btn.querySelector('.tag').textContent = 'BOOM!';
+      air.hits++; if(!air.tried) air.first++;
+      sfx.boom();
+      $('#aFeedback').innerHTML = `<span class="stamp ${air.tried?'good':'fast'} pop">${air.tried ? 'Shot down!' : 'Bullseye! +1 medal'}</span><span class="muted">${f[0]} × ${f[1]} = ${p}</span>`;
+      air.timer = setTimeout(nextWave, 1300);
+    } else {
+      if(!air.tried) air.misses++;
+      air.tried = true; btn.disabled = true; btn.classList.add('dud');
+      btn.querySelector('.tag').textContent = `${f[0]} × ${f[1]} = ${q}`;
+      sfx.miss();
+      $('#aFeedback').innerHTML = `<span class="stamp bad pop">Decoy!</span><span class="muted">${f[0]} × ${f[1]} is ${q}, not ${p}. Try another jet.</span>`;
+    }
+  }
+  function endAir(){
+    const a = air; stopAir(); air = null;
+    if(a.first === WAVES) award('ace');
+    const stars = a.misses===0 ? 3 : a.misses<=2 ? 2 : 1;
+    debrief({
+      mode:'air', log:a.log, started:a.started,
+      kicker:'Airspace secured', stars, misses:a.misses,
+      stats: [[a.hits+' / '+WAVES,'Shot down'], [a.first,'First try']],
+      parts: [[a.first,'for first-try hits'],[3,'for finishing']],
+      again: startAir
+    });
+  }
+
+  // ---------- supply convoy ----------
+  let conv = null;
+  function startConvoy(){
+    conv = { n:null }; disarm(); updateSound(); show('convoy'); renderPicker();
+  }
+  function renderPicker(){
+    $('#cCounter').textContent = 'Pick a route';
+    let rec = 2, recC = 99;
+    PRI.filter(n => n>1).forEach(n => { const c = sectorCount(n); if(c < recC){ recC = c; rec = n; } });
+    let h = '<div class="panel"><h2>Which times table?</h2><p class="muted">The truck stops 12 times, at &times;1 through &times;12. Pick the next stop each time.</p><div class="pick">';
+    for(let n=2;n<=12;n++){
+      h += `<button type="button" data-n="${n}" class="${n===rec?'rec':''}"><b>${n}s</b><span>${n===rec ? 'Needs supplies' : SECTORS[n-1]}</span></button>`;
+    }
+    h += '</div></div>';
+    $('#cBody').innerHTML = h;
+    $$('.pick button').forEach(b => b.onclick = () => beginRoute(+b.dataset.n));
+  }
+  function beginRoute(n){
+    conv = { n, step:1, wrong:0, firstTry:0, tried:false, busy:false, log:[], started:Date.now() };
+    renderRoute();
+  }
+  function renderRoute(){
+    const { n, step } = conv;
+    $('#cCounter').textContent = `${n}s convoy · Stop ${Math.min(step,12)} of 12`;
+    let road = '<div class="road">';
+    for(let i=1;i<=12;i++){
+      if(i < step) road += `<div class="stop done"><span class="st">×${i}</span><span class="sv">${n*i}</span></div>`;
+      else if(i === step) road += `<div class="stop cur"><span class="st">×${i}</span>${TRUCK}</div>`;
+      else road += `<div class="stop"><span class="st">×${i}</span><span class="sv muted">·</span></div>`;
+    }
+    road += '</div>';
+    const c = n*step;
+    const opts = new Set([c]);
+    const pool = shuffle([c+n, c-1, c+1, c+2, c-2, c+10, c-n].filter(x => x>0 && x!==c && x!==(step>1 ? n*(step-1) : -1)));
+    for(const x of pool){ if(opts.size===3) break; opts.add(x); }
+    const choices = shuffle([...opts]);
+    const prev = step>1 ? n*(step-1) : 0;
+    $('#cBody').innerHTML = `
+      <div class="panel" style="text-align:center; gap:6px">
+        <span class="label">Next stop</span>
+        <span style="font-family:var(--display); font-size:2rem">${step} × ${n} = ?</span>
+        <span class="muted">${step>1 ? `Last stop was ${prev}. Add ${n}.` : `Start with one group of ${n}.`}</span>
+      </div>
+      ${road}
+      <div class="choices">${choices.map(x => `<button class="choice" type="button" data-v="${x}">${x}</button>`).join('')}</div>
+      <div class="feedback" id="cFeedback"></div>`;
+    conv.tried = false; conv.busy = false; conv.t0 = performance.now();
+    $$('.choice').forEach(b => b.onclick = () => pickChoice(b, +b.dataset.v, c, prev));
+  }
+  function pickChoice(btn, v, c, prev){
+    if(!conv || conv.busy) return;
+    if(!conv.tried) conv.log.push({ a:conv.step, b:conv.n, ok:v===c, ms:Math.round(performance.now()-conv.t0), ans:v, k:'s' });
+    if(v === c){
+      conv.busy = true; btn.classList.add('yes');
+      if(!conv.tried) conv.firstTry++;
+      sfx.hit();
+      $('#cFeedback').innerHTML = `<span class="stamp good pop">Delivered!</span>`;
+      setTimeout(() => { if(!conv) return; conv.step++; if(conv.step > 12) endConvoy(); else renderRoute(); }, 600);
+    } else {
+      if(!conv.tried) conv.wrong++;
+      conv.tried = true; btn.disabled = true; btn.classList.add('no'); sfx.miss();
+      $('#cFeedback').innerHTML = `<div class="intel pop"><span class="label" style="color:var(--bad)">Wrong road</span><span class="tip">${prev ? `${prev} + ${conv.n} = ${c}.` : `One group of ${conv.n} is ${c}.`} Tap ${c} to keep driving.</span></div>`;
+    }
+  }
+  function endConvoy(){
+    const c = conv; conv = null;
+    if(c.wrong === 0 && [7,8,12].includes(c.n)) award('longhaul');
+    const stars = c.wrong===0 ? 3 : c.wrong<=2 ? 2 : 1;
+    const parts = [[3,'for finishing']];
+    if(c.wrong===0) parts.push([3,'for a perfect route']);
+    debrief({
+      mode:'convoy', log:c.log, started:c.started,
+      kicker:`${c.n}s supplies delivered`, stars, misses:c.wrong,
+      extra:`<div class="panel"><span class="label">The ${c.n}s route</span><p style="font-family:var(--display); font-size:1.15rem; line-height:1.6; font-variant-numeric:tabular-nums">${Array.from({length:12},(_,i)=>c.n*(i+1)).join(' · ')}</p></div>`,
+      stats: [[c.firstTry+' / 12','First try'], [c.wrong,'Wrong roads']],
+      parts,
+      again: startConvoy
+    });
+  }
+
+
+
+  // ---------- secret awards, surprises, easter eggs ----------
+  const AWARDS = {
+    boots:       ['Boots on the Ground', 'Finished your first mission'],
+    lightning:   ['Lightning Reflexes', 'Answered a 6s, 7s, 8s or 9s fact in under 1.5 seconds'],
+    sharpshooter:['Sharpshooter', '10 fast answers in a row'],
+    comeback:    ['Comeback Kid', 'Missed a fact, then nailed its re-check fast'],
+    flawless:    ['Flawless Victory', 'A whole mission without a single miss'],
+    seven:       ['Lucky Seven', 'Mastered a fact from the 7s, the toughest table'],
+    mixup:       ['Mix-Up Fixed', 'Mastered a fact you used to confuse with another'],
+    bigguns:     ['Big Guns', 'Upgraded a special weapon to Artillery'],
+    bunkers5:    ['Bunker Buster', 'Holding 5 bunkers at once'],
+    liberator:   ['Liberator', 'Liberated a whole region'],
+    arsenal:     ['Arsenal', '10 special weapons in the Armory'],
+    streak3:     ['On Duty', 'Practiced 3 days in a row'],
+    streak7:     ['Iron Will', 'Practiced 7 days in a row'],
+    weekend:     ['Weekend Warrior', 'Practiced on a Saturday and the Sunday after'],
+    codebreaker: ['Codebreaker Elite', 'Decoded 5 enemy messages'],
+    ace:         ['Ace Pilot', 'Air Defense: 10 of 10 on the first try'],
+    longhaul:    ['Long Haul', 'A perfect Supply Convoy on the 7s, 8s or 12s'],
+    bullseye:    ['Bullseye', 'Operation Skystrike: a direct hit'],
+    untouchable: ['Untouchable', 'Operation Skystrike: a direct hit without a scratch'],
+    salute:      ['At Ease, Soldier', 'Found the salute', 'egg'],
+    intercept:   ['Top Secret Intercept', 'Decoded a very rare message', 'egg'],
+    ufo:         ['Close Encounter', 'Shot down something that was not a plane', 'egg'],
+    golden:      ['Golden Tank', 'Destroyed the rarest tank on the field', 'egg'],
+    fishing:     ['Gone Fishing', 'Found what lives in the river', 'egg']
+  };
+  const MEDAL_SVG = '<svg class="medal" viewBox="0 0 40 40" aria-hidden="true"><path d="M12 2h6l3 10h-6z M28 2h-6l-3 10h6z" fill="#7a2a1c"/><circle cx="20" cy="25" r="12" fill="#1f1e1a"/><path d="M20 15l2.9 6 6.6.8-4.9 4.5 1.3 6.5L20 29.6l-5.9 3.2 1.3-6.5-4.9-4.5 6.6-.8z" fill="#f5f0e1"/></svg>';
+  const WICON = {
+    'Mortar':'<svg viewBox="0 0 56 36"><rect x="22" y="6" width="9" height="22" rx="2" transform="rotate(20 26 17)" fill="currentColor"/><rect x="12" y="28" width="30" height="5" rx="2" fill="currentColor"/></svg>',
+    'Cannon':'<svg viewBox="0 0 56 36"><rect x="14" y="10" width="34" height="8" rx="3" transform="rotate(-12 31 14)" fill="currentColor"/><circle cx="20" cy="24" r="9" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="20" cy="24" r="2" fill="currentColor"/></svg>',
+    'Artillery':'<svg viewBox="0 0 56 36"><rect x="18" y="8" width="36" height="4" rx="2" transform="rotate(-18 36 10)" fill="currentColor"/><path d="M10 18h24l4 8H6z" fill="currentColor"/><circle cx="12" cy="29" r="5" fill="currentColor"/><circle cx="30" cy="29" r="5" fill="currentColor"/></svg>',
+    'Rocket Battery':'<svg viewBox="0 0 56 36"><g fill="currentColor"><path d="M14 6l4 -4 4 4v16h-8z"/><path d="M25 6l4 -4 4 4v16h-8z"/><path d="M36 6l4 -4 4 4v16h-8z"/><rect x="8" y="24" width="42" height="6" rx="2"/></g></svg>',
+    'Air Strike':'<svg viewBox="0 0 72 40"><path fill="currentColor" d="M4 20 L24 16 L36 3 L44 3 L38 16 L58 16 Q70 20 58 24 L38 24 L44 37 L36 37 L24 24 Z"/></svg>',
+    'Battleship Barrage':'<svg viewBox="0 0 56 36"><g fill="currentColor"><path d="M2 24h52l-6 9H8z"/><rect x="16" y="15" width="22" height="9"/><rect x="24" y="8" width="7" height="7"/><rect x="38" y="17" width="14" height="3"/><rect x="4" y="17" width="12" height="3"/></g></svg>'
+  };
+  let armPick = null, awPick = null;
+  let toastQ = [], toastOn = false, missionAwards = [];
+  function toast(title, text, egg, label){
+    toastQ.push({ title, text, egg, label });
+    if(!toastOn) nextToast();
+  }
+  function nextToast(){
+    const t = toastQ.shift(); const host = $('#toast');
+    if(!t){ toastOn = false; host.innerHTML = ''; return; }
+    toastOn = true;
+    host.innerHTML = `<div class="t${t.egg?' egg':''}">${MEDAL_SVG}<span><span class="label" style="color:var(--ink)">${t.label ? t.label : t.egg ? 'Easter egg found' : 'Secret award unlocked'}</span><b>${t.title}</b><span>${t.text}</span></span></div>`;
+    tone(660,.1,'square',.05); tone(880,.1,'square',.05,.1); tone(1320,.2,'square',.05,.2);
+    setTimeout(nextToast, 2800);
+  }
+  function award(id){
+    S.awards = S.awards || {};
+    if(S.awards[id] || !AWARDS[id]) return false;
+    S.awards[id] = Date.now();
+    const egg = AWARDS[id][2] === 'egg';
+    S.medals += 5; S.coins = (S.coins||0) + 5; save();
+    missionAwards.push(id);
+    toast(AWARDS[id][0], `${AWARDS[id][1]}. +5 medals, +5 coins`, egg);
+    return true;
+  }
+  function dayList(){ return (S.days||[]).map(k => { const [y,m,d] = k.split('-').map(Number); return new Date(y, m-1, d).getTime(); }).sort((a,b)=>a-b); }
+  function longestRunEndingToday(){
+    const t = new Date(); const base = new Date(t.getFullYear(), t.getMonth(), t.getDate()).getTime();
+    const set = new Set(dayList()); let n = 0;
+    while(set.has(base - n*86400000)) n++;
+    return n;
+  }
+  function checkMissionAwards(d){
+    award('boots');
+    if(d.stars === 3 && (d.log||[]).length >= 10) award('flawless');
+    if(takenBases().length >= 5) award('bunkers5');
+    for(let n=1;n<=12;n++) if(sectorCount(n) === 12){ award('liberator'); break; }
+    if(ALL.filter(f => info(key(...f)).lv >= 3).length >= 10) award('arsenal');
+    S.days = S.days || []; if(!S.days.includes(today())) S.days.push(today());
+    const run = longestRunEndingToday();
+    if(run >= 3) award('streak3');
+    if(run >= 7) award('streak7');
+    const now = new Date();
+    if(now.getDay() === 0){ const sat = new Date(now.getFullYear(), now.getMonth(), now.getDate()-1); if(S.days.includes(sat.getFullYear()+'-'+(sat.getMonth()+1)+'-'+sat.getDate())) award('weekend'); }
+    save();
+  }
+  function renderAwards(){
+    const ids = Object.keys(AWARDS), got = ids.filter(k => (S.awards||{})[k]).sort((a,b) => S.awards[a]-S.awards[b]);
+    $('#awCount').textContent = `${got.length} of ${ids.length}`;
+    const star = '<svg viewBox="0 0 24 24"><path d="M12 2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17l-6.1 3.4 1.5-6.8L2.2 9l6.9-.7z" fill="#1f1e1a" opacity=".8"/></svg>';
+    $('#awards').innerHTML = got.map(k => `<button type="button" class="md got${AWARDS[k][2]==='egg'?' egg':''}${awPick===k?' sel':''}" data-a="${k}" aria-label="${AWARDS[k][0]}">${star}</button>`).join('')
+      + Array.from({length: ids.length - got.length}, () => '<div class="md lock" aria-label="Secret award"><span>?</span></div>').join('');
+    $('#awSel').innerHTML = awPick && AWARDS[awPick] ? `<b style="color:var(--amber)">${AWARDS[awPick][0]}</b> · ${AWARDS[awPick][1]}` : got.length ? 'Tap a medal' : 'Secret awards. Find them all.';
+    $$('.md.got').forEach(b => b.onclick = () => { awPick = b.dataset.a; renderAwards(); });
+  }
+  // Easter egg: tap your rank badge 5 times quickly
+  let badgeTaps = [];
+  $('#badge').addEventListener('click', () => {
+    const now = Date.now(); badgeTaps = badgeTaps.filter(t => now - t < 2500); badgeTaps.push(now);
+    if(badgeTaps.length >= 5){
+      badgeTaps = [];
+      const b = $('#badge'); b.classList.remove('salute'); void b.offsetWidth; b.classList.add('salute');
+      tone(523,.15,'square',.05); tone(659,.15,'square',.05,.15); tone(784,.3,'square',.05,.3);
+      if(!award('salute')) toast('At ease, soldier', 'The general returns your salute.', true);
+      renderHome();
+    }
+  });
+  $('#badge').style.cursor = 'pointer';
+
+
+  // ---------- counterattack: slipping mastered facts come back as an action scene ----------
+  function slipping(){
+    const now = Date.now();
+    return ALL.filter(f => { const i = info(key(...f)); return i.ever && (i.lv < 3 || (i.due && now - i.due > 3*DAY)); });
+  }
+  function maybeAttack(){
+    if(current !== 'home' || !S.missions) return;
+    const list = slipping();
+    if(!list.length) return;
+    if(S.lastAttack && Date.now() - S.lastAttack < 2*DAY) return;
+    $('#atkFacts').innerHTML = list.slice(0,4).map(([a,b]) => `<span class="chip">${a} × ${b}</span>`).join('');
+    $('#attack').hidden = false;
+  }
+  $('#atkGo').onclick = () => { $('#attack').hidden = true; S.lastAttack = Date.now(); save(); startDefend(); };
+  $('#atkLater').onclick = () => { $('#attack').hidden = true; S.lastAttack = Date.now() - DAY; save(); };
+
+  function updateFact(a, b, ans, secs){
+    const k = key(a,b), p = a*b, now = Date.now(), td = today(), fast = secs < FAST;
+    const i = Object.assign({ lv:0, seen:false, right:0, wrong:0 }, S.facts[k]);
+    const was = i.lv >= 3;
+    if(ans === p){
+      if(!was){
+        if(fast){ if(i.lastFastDay !== td){ i.fastDays = (i.fastDays||0)+1; i.lastFastDay = td; } if(i.fastDays >= 2){ i.lv = 3; i.int = 1; i.due = now + DAY; i.ever = 1; } else i.lv = Math.max(i.lv, 2); }
+        else i.lv = Math.max(i.lv, 1);
+      } else if((i.due||0) <= now){
+        if(fast){ i.int = Math.min(60, Math.max(1, (i.int||1)*2)); i.lv = Math.min(5, i.lv+1); } else i.int = Math.max(1, Math.floor((i.int||1)/2));
+        i.due = now + i.int*DAY;
+      }
+      i.seen = true; i.right++;
+    } else {
+      i.seen = true; i.lv = 0; i.wrong++; i.fastDays = 0; i.lastFastDay = null; i.int = 0; i.due = 0;
+      const mix = ALL.filter(([x,y]) => x*y === ans && key(x,y) !== k && (x===a || x===b || y===a || y===b));
+      if(mix.length) i.conf = [...new Set([key(...mix[0]), ...(i.conf||[])])].slice(0,3);
+    }
+    S.facts[k] = i; save();
+    return { ok: ans === p, fast, captured: !was && i.lv >= 3 };
+  }
+
+  let dfd = null, dEntry = '';
+  const DW = 400, DH = 380, HOLD = 268;
+  function startDefend(){
+    let facts = slipping().slice(0,4);
+    if(!facts.length) facts = pickFacts(3);
+    const queue = shuffle([...facts, ...facts].map(orient));
+    dfd = { queue, units:[], spawnT:0, cur:null, phase:'aim', t0:0, hits:0, fast:0, misses:0, log:[], started:Date.now(), total:queue.length, raf:0, last:performance.now(), parts:[], tracer:null, newly:[],
+      clouds: Array.from({length:4}, () => ({ x:rand(0,DW), y:rand(20,140), w:rand(70,140), v:rand(4,10) })) };
+    const cv = $('#dcv'), dpr = Math.min(2, window.devicePixelRatio || 1); cv.width = DW*dpr; cv.height = DH*dpr; dfd.dpr = dpr;
+    missionAwards = []; dEntry = ''; disarm(); updateSound(); show('defend');
+    $('#dFeedback').innerHTML = '<span class="muted">Type the answer on the sign of the closest paratrooper, then FIRE.</span>';
+    renderDEntry(); spawnUnit();
+    dfd.raf = requestAnimationFrame(dLoop);
+  }
+  function stopDefend(){ if(dfd){ cancelAnimationFrame(dfd.raf); dfd = null; } }
+  function spawnUnit(){
+    if(!dfd.queue.length) return;
+    const live = new Set(dfd.units.filter(u => !u.dead).map(u => key(...u.f)));
+    let qi = dfd.queue.findIndex(q => !live.has(key(...q)));
+    if(qi < 0) return;
+    const f = dfd.queue.splice(qi, 1)[0];
+    const lanes = [80, 200, 320].filter(x => !dfd.units.some(u => Math.abs(u.x - x) < 40 && u.y < 120));
+    dfd.units.push({ f, x:(lanes.length ? lanes[Math.floor(Math.random()*lanes.length)] : rand(70,330)), y:46, sway:rand(0,6), v:rand(13,17), dead:false, shake:0 });
+  }
+  function dTarget(){ let t = null; dfd.units.forEach(u => { if(!u.dead && (!t || u.y > t.y)) t = u; }); return t; }
+  function dLoop(now){
+    if(!dfd) return;
+    const dt = Math.min(.05, (now - dfd.last)/1000); dfd.last = now;
+    dfd.spawnT -= dt;
+    const alive = dfd.units.filter(u => !u.dead).length;
+    if(dfd.spawnT <= 0 && alive < 3 && dfd.queue.length){ spawnUnit(); dfd.spawnT = 2.6; }
+    dfd.units.forEach(u => { if(!u.dead){ u.sway += dt; u.y = Math.min(HOLD - (dfd.units.filter(o => !o.dead && o !== u && Math.abs(o.x-u.x)<50 && o.y > u.y).length ? 70 : 0), u.y + u.v*dt); } u.shake = Math.max(0, u.shake - dt); });
+    dfd.units = dfd.units.filter(u => !u.dead || u.fall < 1);
+    dfd.units.forEach(u => { if(u.dead) u.fall += dt*1.5; });
+    dfd.parts.forEach(p => { p.x += p.vx*dt; p.y += p.vy*dt; p.vy += 80*dt; p.life -= dt; });
+    dfd.parts = dfd.parts.filter(p => p.life > 0);
+    if(dfd.tracer){ dfd.tracer.life -= dt; if(dfd.tracer.life <= 0) dfd.tracer = null; }
+    const t = dTarget();
+    if(t !== dfd.cur && dfd.phase === 'aim'){ dfd.cur = t; dfd.t0 = performance.now(); $('#dFact').textContent = t ? `${t.f[0]} × ${t.f[1]} =` : '?'; }
+    $('#dCounter').textContent = `${dfd.hits} of ${dfd.total} down`;
+    dDraw();
+    if(!dfd.queue.length && !dfd.units.length && dfd.phase === 'aim'){ endDefend(); return; }
+    dfd.raf = requestAnimationFrame(dLoop);
+  }
+  function dDraw(){
+    const c = $('#dcv').getContext('2d');
+    c.setTransform(dfd.dpr,0,0,dfd.dpr,0,0);
+    const sky = c.createLinearGradient(0,0,0,DH); sky.addColorStop(0,'#3a2a2a'); sky.addColorStop(.6,'#6b4a3a'); sky.addColorStop(1,'#8a7458');
+    c.fillStyle = sky; c.fillRect(0,0,DW,DH);
+    c.fillStyle = 'rgba(236,230,208,.08)'; dfd.clouds.forEach(cl => { cl.x += cl.v/60; if(cl.x - cl.w > DW) cl.x = -cl.w; c.beginPath(); c.ellipse(cl.x, cl.y, cl.w/2, cl.w/7, 0, 0, 7); c.fill(); });
+    // hold line + ground + base
+    c.strokeStyle = 'rgba(230,169,48,.6)'; c.setLineDash([6,6]); c.lineWidth = 2; c.beginPath(); c.moveTo(0, HOLD+34); c.lineTo(DW, HOLD+34); c.stroke(); c.setLineDash([]);
+    c.fillStyle = '#3c4630'; c.fillRect(0, DH-50, DW, 50);
+    for(let x=4; x<DW; x+=22){ c.fillStyle = '#b4a678'; c.beginPath(); c.ellipse(x+5, DH-52, 11, 6, 0, 0, 7); c.fill(); }
+    const bx = DW/2, by = DH-28;
+    c.fillStyle = '#6d7651'; c.beginPath(); c.arc(bx, by, 22, Math.PI, 0); c.fill();
+    const t = dfd.cur && !dfd.cur.dead ? dfd.cur : null;
+    const ang = t ? Math.atan2(t.y - by, t.x - bx) : -Math.PI/2;
+    c.save(); c.translate(bx, by-6); c.rotate(ang); c.fillStyle = '#c8b98a'; c.fillRect(0,-4,32,8); c.restore();
+    c.strokeStyle = '#26221d'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(bx-12, by-22); c.lineTo(bx-12, by-48); c.stroke();
+    c.fillStyle = '#e6a930'; c.beginPath(); c.moveTo(bx-12, by-48); c.lineTo(bx+4, by-43); c.lineTo(bx-12, by-38); c.fill();
+    if(dfd.tracer){ c.strokeStyle = `rgba(255,210,122,${dfd.tracer.life*4})`; c.lineWidth = 3; c.beginPath(); c.moveTo(bx, by-6); c.lineTo(dfd.tracer.x, dfd.tracer.y); c.stroke(); }
+    // paratroopers
+    dfd.units.forEach(u => {
+      const sx = u.x + Math.sin(u.sway*1.4)*6 + (u.shake ? Math.sin(u.shake*60)*5 : 0), sy = u.y + (u.dead ? u.fall*120 : 0);
+      c.globalAlpha = u.dead ? Math.max(0, 1-u.fall) : 1;
+      if(!u.dead){
+        c.fillStyle = '#7a3a2c'; c.beginPath(); c.arc(sx, sy-34, 24, Math.PI, 0); c.fill();
+        c.fillStyle = '#5a2a20'; for(let k=-2;k<=2;k++){ c.beginPath(); c.arc(sx + k*9.6, sy-34, 4.8, 0, Math.PI); c.fill(); }
+        c.strokeStyle = 'rgba(0,0,0,.5)'; c.lineWidth = 1; c.beginPath(); c.moveTo(sx-22, sy-33); c.lineTo(sx-4, sy-6); c.moveTo(sx+22, sy-33); c.lineTo(sx+4, sy-6); c.stroke();
+      }
+      c.fillStyle = '#2b2f22'; c.beginPath(); c.arc(sx, sy-8, 4, 0, 7); c.fill(); c.fillRect(sx-4, sy-4, 8, 12);
+      // fact sign
+      const label = `${u.f[0]} × ${u.f[1]}`;
+      c.font = "18px 'Black Ops One', Impact, sans-serif"; const w = c.measureText(label).width + 16;
+      c.fillStyle = '#f5f0e1'; c.fillRect(sx - w/2, sy+10, w, 26);
+      c.strokeStyle = u === t ? '#e6a930' : '#6e6447'; c.lineWidth = u === t ? 3 : 1.5; c.strokeRect(sx - w/2, sy+10, w, 26);
+      c.fillStyle = '#1f1e1a'; c.textAlign = 'center'; c.fillText(label, sx, sy+30);
+      if(u === t && !u.dead){ c.strokeStyle = '#e6a930'; c.lineWidth = 2; const r = Math.max(w/2, 28) + 8;
+        [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([dx,dy]) => { c.beginPath(); c.moveTo(sx+dx*r, sy+5+dy*26); c.lineTo(sx+dx*r, sy+5+dy*16); c.moveTo(sx+dx*r, sy+5+dy*26); c.lineTo(sx+dx*(r-10), sy+5+dy*26); c.stroke(); }); }
+      c.globalAlpha = 1;
+    });
+    dfd.parts.forEach(p => { c.globalAlpha = Math.max(0, p.life*2); c.fillStyle = p.c; c.beginPath(); c.arc(p.x, p.y, p.r, 0, 7); c.fill(); });
+    c.globalAlpha = 1;
+  }
+  function renderDEntry(state){ const el = $('#dEntry'); el.className = 'entry' + (state ? ' '+state : ''); el.innerHTML = dEntry ? dEntry : '<span class="cursor">_</span>'; }
+  function dPress(k){
+    if(!dfd || dfd.phase === 'wait') return;
+    if(k === 'fire'){ dFire(); return; }
+    if(k === 'del'){ dEntry = dEntry.slice(0,-1); renderDEntry(); return; }
+    if(dEntry.length >= 3 || (dEntry === '' && k === '0')) return;
+    dEntry += k; sfx.key(); renderDEntry();
+  }
+  function dFire(){
+    const u = dfd.cur; if(!dEntry || !u) return;
+    const [a,b] = u.f, p = a*b, ans = parseInt(dEntry,10);
+    if(dfd.phase === 'fix'){
+      if(ans === p){
+        sfx.hit(); renderDEntry('good');
+        u.dead = true; u.fall = 0; dfd.queue.push([b,a]); dfd.total++;
+        $('#dFeedback').innerHTML = `<span class="stamp good pop">Pushed back</span><span class="muted">${a} × ${b} will try again.</span>`;
+        dfd.phase = 'wait'; setTimeout(() => { if(!dfd) return; dfd.phase = 'aim'; dfd.cur = null; dEntry = ''; renderDEntry(); }, 900);
+      } else { sfx.miss(); dEntry = ''; renderDEntry('bad'); }
+      return;
+    }
+    const secs = (performance.now() - dfd.t0)/1000;
+    const r = updateFact(a, b, ans, secs);
+    dfd.log.push({ a, b, ok:r.ok, ms:Math.round(secs*1000), ans, k:'t' });
+    if(r.ok){
+      dfd.hits++; if(r.fast) dfd.fast++;
+      if(r.captured) dfd.newly.push(key(a,b));
+      dfd.tracer = { x:u.x, y:u.y, life:.25 };
+      u.dead = true; u.fall = 0;
+      for(let i=0;i<18;i++){ const an = rand(0,7), sp = rand(40,170); dfd.parts.push({ x:u.x, y:u.y, vx:Math.cos(an)*sp, vy:Math.sin(an)*sp, life:rand(.3,.7), r:rand(2,5), c:['#ffd27a','#e6a930','#e3653f','#7a7466'][i%4] }); }
+      sfx.boom(); renderDEntry('good');
+      $('#dFeedback').innerHTML = `<span class="stamp ${r.fast?'fast':'good'} pop">${r.fast ? 'Shot down!' : 'Got him!'}</span><span class="muted">${a} × ${b} = ${p}${r.fast ? ` in ${secs.toFixed(1)}s` : ''}${r.captured ? ' · back in your Armory' : ''}</span>`;
+      dfd.phase = 'wait'; setTimeout(() => { if(!dfd) return; dfd.phase = 'aim'; dfd.cur = null; dEntry = ''; renderDEntry(); }, 650);
+    } else {
+      dfd.misses++; u.shake = .4; sfx.miss(); dEntry = ''; renderDEntry('bad'); dfd.phase = 'fix';
+      $('#dFeedback').innerHTML = `<div class="intel pop"><span class="label" style="color:var(--bad)">He dodged &middot; Intel report</span><span class="fact">${a} × ${b} = ${p}</span><span class="tip">${hint(a,b)}</span><span class="todo">Type ${p} and fire to push him back.</span></div>`;
+    }
+  }
+  function endDefend(){
+    const d = dfd; stopDefend();
+    const stars = d.misses===0 ? 3 : d.misses<=2 ? 2 : 1;
+    const chips = d.newly.map(k => { const [a,b]=k.split('x'); return `<span class="chip">${a} × ${b} = ${a*b}</span>`; }).join('');
+    debrief({
+      mode:'defend', log:d.log, started:d.started,
+      kicker:'Counterattack repelled', stars, misses:d.misses, bonusCoins:5,
+      stats:[[d.hits,'Shot down'], [d.fast,'Fast shots']],
+      parts:[[d.fast,'for fast shots'],[3,'for holding the line']],
+      captured: chips || '',
+      again: goHome
+    });
+    const again = $('#againBtn'); if(again) again.hidden = true;
+  }
+  $('#dKeypad').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if(b) dPress(b.dataset.k); });
+  document.addEventListener('keydown', e => {
+    if(current !== 'defend' || !dfd) return;
+    if(/^[0-9]$/.test(e.key)){ dPress(e.key); e.preventDefault(); }
+    else if(e.key === 'Backspace'){ dPress('del'); e.preventDefault(); }
+    else if(e.key === 'Enter'){ dPress('fire'); e.preventDefault(); }
+  });
+
+
+  // ---------- save code: backup + restore of all progress ----------
+  const BK_KEYS = ['facts','medals','missions','coins','best','awards','bases','days','orders','decoded','lastAttack','srs','ever1','crate1','sound'];
+  function b64enc(bytes){ let s = ''; bytes.forEach(b => s += String.fromCharCode(b)); return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+  function b64dec(str){ str = str.replace(/-/g,'+').replace(/_/g,'/'); while(str.length % 4) str += '='; const s = atob(str); return Uint8Array.from(s, c => c.charCodeAt(0)); }
+  async function pipe(bytes, stream){ return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer()); }
+  async function makeCode(){
+    const o = {}; BK_KEYS.forEach(k => { if(S[k] !== undefined) o[k] = S[k]; });
+    // trim each fact to what the game needs
+    o.facts = {}; for(const k in S.facts){ const i = S.facts[k]; o.facts[k] = { lv:i.lv, seen:i.seen, right:i.right||0, wrong:i.wrong||0, int:i.int, due:i.due ? Math.round(i.due/60000) : 0, fastDays:i.fastDays, lastFastDay:i.lastFastDay, ever:i.ever, conf:i.conf }; }
+    o.days = (S.days||[]).slice(-30);
+    const raw = new TextEncoder().encode(JSON.stringify(o));
+    if(window.CompressionStream){ try{ return 'DC2.' + b64enc(await pipe(raw, new CompressionStream('deflate-raw'))); }catch(e){} }
+    return 'DC1.' + b64enc(raw);
+  }
+  async function readCode(code){
+    code = (code||'').trim().replace(/\s+/g,'');
+    const [tag, body] = [code.slice(0,4), code.slice(4)];
+    let bytes = b64dec(body);
+    if(tag === 'DC2.') bytes = await pipe(bytes, new DecompressionStream('deflate-raw'));
+    else if(tag !== 'DC1.') throw new Error('not a save code');
+    const o = JSON.parse(new TextDecoder().decode(bytes));
+    if(!o || !o.facts) throw new Error('empty');
+    for(const k in o.facts){ if(o.facts[k].due) o.facts[k].due *= 60000; }
+    return o;
+  }
+  function bkMsg(t){ $('#bkMsg').textContent = t; }
+  $('#bkCopy').onclick = async () => {
+    const code = await makeCode();
+    const out = $('#bkOut'); out.value = code; out.hidden = false;
+    S.lastBackup = Date.now(); save(); $('#bkWhen').textContent = 'Copied just now';
+    try{ await navigator.clipboard.writeText(code); bkMsg('Copied. Paste it into a text to yourself to keep it safe.'); }
+    catch(e){ out.focus(); out.select(); bkMsg('Select the code above and copy it.'); }
+  };
+  $('#bkOpen').onclick = () => { const r = $('#bkRestore'); r.hidden = !r.hidden; bkMsg(''); };
+  $('#bkLoad').onclick = async () => {
+    try{
+      const o = await readCode($('#bkIn').value);
+      S = Object.assign(load(), o, { log: S.log || [] });
+      save(); $('#bkRestore').hidden = true; $('#bkIn').value = '';
+      renderHome(); bkMsg('Progress restored.');
+      toast('Progress restored', `${RANKS[rankIndex(S.medals)][1]} · ${S.medals} medals · ${S.coins} coins`, false, 'Welcome back, Commander');
+    }catch(e){ bkMsg("That code didn't work. Copy the whole code, starting with DC."); }
+  };
+
+  // ---------- reward arcade (no math) ----------
+  const COST = 10;
+  const COIN = '<svg class="coin" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="var(--amber)"/><circle cx="12" cy="12" r="7.5" fill="none" stroke="var(--ink)" stroke-width="1.5" opacity=".5"/></svg>';
+  const AW = 400, AH = 560;
+  let AR = null;
+  const rand = (a,b) => a + Math.random()*(b-a);
+
+  function boom(x, y, big){
+    const n = big ? 28 : 16;
+    for(let i=0;i<n;i++){
+      const a = rand(0, Math.PI*2), sp = rand(40, big ? 240 : 160);
+      AR.parts.push({ x, y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp, life:rand(.35,.8), max:.8, r:rand(2, big?6:4), c:['#ffd27a','#e6a930','#e3653f','#7a7466'][i%4] });
+    }
+    AR.rings.push({ x, y, r:4, max: big ? 46 : 30, life:.3 });
+    AR.shake = Math.max(AR.shake, big ? 8 : 4);
+  }
+  function popText(x, y, text, color){ AR.texts.push({ x, y, text, color: color || '#ffd27a', life:.9 }); }
+
+  const GAMES = {
+    planes: {
+      name:'Plane Blaster', blurb:'Tap the sky to fire flak and knock planes down.',
+      help:'Tap where the plane will be. Shells take a moment to get there, so aim ahead. Bombers take 2 hits.',
+      icon:'<svg viewBox="0 0 72 40" aria-hidden="true"><path fill="var(--khaki)" d="M4 20 L24 16 L36 3 L44 3 L38 16 L58 16 Q70 20 58 24 L38 24 L44 37 L36 37 L24 24 Z"/></svg>',
+      init(){
+        return { planes:[], shells:[], spawn:.4, gun:-Math.PI/2, cd:0, combo:0, comboT:0,
+          clouds: Array.from({length:6}, () => ({ x:rand(0,AW), y:rand(30,360), w:rand(60,130), v:rand(6,16) })) };
+      },
+      tap(g, x, y){
+        if(g.cd > 0 || y > AH-60) return;
+        g.cd = .16;
+        const gx = AW/2, gy = AH-44;
+        g.gun = Math.atan2(y-gy, x-gx);
+        const d = Math.hypot(x-gx, y-gy);
+        g.shells.push({ x:gx+Math.cos(g.gun)*26, y:gy+Math.sin(g.gun)*26, tx:x, ty:y, t:0, T:d/950 });
+        tone(260,.05,'square',.04);
+      },
+      update(g, dt){
+        const k = 1 + (60-g.t)/60;
+        g.cd -= dt; g.comboT -= dt; if(g.comboT <= 0) g.combo = 0;
+        g.clouds.forEach(c => { c.x += c.v*dt; if(c.x - c.w > AW) c.x = -c.w; });
+        g.spawn -= dt;
+        if(g.spawn <= 0){
+          g.spawn = rand(.5, 1.1) / k;
+          const r = Math.random(), dir = Math.random()<.5 ? 1 : -1;
+          const ufoNow = !g.ufoDone && g.t < 45 && Math.random() < 0.03;
+          if(ufoNow) g.ufoDone = true;
+          const type = ufoNow ? 'ufo' : r < .15 ? 'bomber' : r < .45 ? 'fighter' : 'plane';
+          const spec = { ufo:{ s:1, v:130, hp:1, pts:500 }, bomber:{ s:1.6, v:45, hp:2, pts:50 }, fighter:{ s:.75, v:150, hp:1, pts:25 }, plane:{ s:1, v:90, hp:1, pts:10 } }[type];
+          g.planes.push({ type, dir, x: dir>0 ? -50 : AW+50, y: rand(40, type==='bomber' ? 220 : 380), y0:0, v: spec.v*rand(.9,1.2)*(1+(k-1)*.5), s:spec.s, hp:spec.hp, pts:spec.pts, ph:rand(0,6), flash:0 });
+          g.planes[g.planes.length-1].y0 = g.planes[g.planes.length-1].y;
+        }
+        g.planes.forEach(p => { p.x += p.dir*p.v*dt; p.ph += dt*2; p.y = p.y0 + Math.sin(p.ph)*6; p.flash -= dt; });
+        g.planes = g.planes.filter(p => p.hp > 0 && p.x > -80 && p.x < AW+80);
+        g.shells = g.shells.filter(sh => {
+          sh.t += dt;
+          const f = Math.min(1, sh.t/sh.T);
+          sh.cx = sh.x + (sh.tx-sh.x)*f; sh.cy = sh.y + (sh.ty-sh.y)*f;
+          if(f < 1) return true;
+          AR.rings.push({ x:sh.tx, y:sh.ty, r:4, max:30, life:.25 });
+          let hit = false;
+          g.planes.forEach(p => {
+            if(p.hp > 0 && Math.hypot(p.x-sh.tx, p.y-sh.ty) < 30 + 16*p.s){
+              p.hp--; p.flash = .15; hit = true;
+              if(p.hp <= 0){
+                g.combo++; g.comboT = 1.6;
+                const mult = Math.min(4, 1 + Math.floor(g.combo/3));
+                AR.score += p.pts*mult;
+                boom(p.x, p.y, p.type==='bomber' || p.type==='ufo');
+                if(p.type==='ufo'){ award('ufo'); popText(p.x, p.y+20, 'UFO?!', '#b7d97e'); }
+                popText(p.x, p.y-16, `+${p.pts*mult}${mult>1?'  x'+mult:''}`);
+                sfx.boom();
+              } else { tone(500,.05,'square',.04); popText(p.x, p.y-16, 'HIT', '#ece6d0'); }
+            }
+          });
+          return false;
+        });
+      },
+      draw(g, c){
+        const sky = c.createLinearGradient(0,0,0,AH);
+        sky.addColorStop(0,'#2a3a44'); sky.addColorStop(.7,'#56707a'); sky.addColorStop(1,'#8a8c74');
+        c.fillStyle = sky; c.fillRect(0,0,AW,AH);
+        c.fillStyle = 'rgba(236,230,208,.12)';
+        g.clouds.forEach(cl => { c.beginPath(); c.ellipse(cl.x, cl.y, cl.w/2, cl.w/6, 0, 0, 7); c.fill(); c.beginPath(); c.ellipse(cl.x+cl.w*.2, cl.y-cl.w*.08, cl.w/4, cl.w/7, 0, 0, 7); c.fill(); });
+        // hills + ground
+        c.fillStyle = '#3c4630'; c.beginPath(); c.moveTo(0,AH-70);
+        for(let x=0;x<=AW;x+=20) c.lineTo(x, AH-70 - Math.sin(x/45)*10 - Math.sin(x/17)*4);
+        c.lineTo(AW,AH); c.lineTo(0,AH); c.fill();
+        c.fillStyle = '#2b3322'; c.fillRect(0,AH-30,AW,30);
+        g.planes.forEach(p => drawPlane(c, p));
+        // shells
+        c.fillStyle = '#ffd27a';
+        g.shells.forEach(sh => { if(sh.cx!==undefined){ c.beginPath(); c.arc(sh.cx, sh.cy, 2.6, 0, 7); c.fill(); } });
+        // AA gun
+        const gx = AW/2, gy = AH-44;
+        c.save(); c.translate(gx, gy); c.rotate(g.gun);
+        c.fillStyle = '#c8b98a'; c.fillRect(0,-4,30,8); c.fillStyle = '#8f8463'; c.fillRect(24,-5,6,10);
+        c.restore();
+        c.fillStyle = '#6d7651'; c.beginPath(); c.arc(gx, gy+4, 16, Math.PI, 0); c.fill();
+        c.fillStyle = '#4a5536'; c.fillRect(gx-26, gy+4, 52, 12);
+        if(g.combo >= 3){ c.fillStyle = '#ffd27a'; c.font = "20px 'Black Ops One', Impact, sans-serif"; c.textAlign = 'center'; c.fillText(`COMBO x${Math.min(4,1+Math.floor(g.combo/3))}`, AW/2, 70); }
+      }
+    },
+
+    tanks: {
+      name:'Tank Battle', blurb:'Stop enemy tanks before they reach your line.',
+      help:'Tap an enemy tank to fire at it. Heavy tanks take 3 hits. Do not let 5 tanks break through your sandbags.',
+      icon:'<svg viewBox="0 0 44 30" aria-hidden="true"><rect x="6" y="12" width="32" height="14" rx="3" fill="var(--khaki)"/><rect x="4" y="22" width="36" height="6" rx="3" fill="#8f8463"/><circle cx="20" cy="12" r="6" fill="var(--khaki)"/><rect x="24" y="9" width="18" height="4" fill="var(--khaki)"/></svg>',
+      init(){
+        return { tanks:[], shells:[], spawn:.6, cd:0, aim:-Math.PI/2, hearts:5, scorch:[], combo:0, comboT:0,
+          rocks: Array.from({length:18}, () => ({ x:rand(0,AW), y:rand(0,AH-110), r:rand(3,9) })),
+          tufts: Array.from({length:40}, () => ({ x:rand(0,AW), y:rand(0,AH-100) })) };
+      },
+      tap(g, x, y){
+        if(g.cd > 0) return;
+        g.cd = .3;
+        const px = AW/2, py = AH-48;
+        g.aim = Math.atan2(y-py, x-px);
+        const d = Math.hypot(x-px, y-py);
+        g.shells.push({ x:px+Math.cos(g.aim)*30, y:py+Math.sin(g.aim)*30, tx:x, ty:y, sx:px, sy:py, t:0, T:Math.max(.08, d/700) });
+        tone(140,.12,'sawtooth',.05); AR.shake = Math.max(AR.shake, 2);
+      },
+      update(g, dt){
+        const k = 1 + (60-g.t)/45;
+        g.cd -= dt; g.comboT -= dt; if(g.comboT <= 0) g.combo = 0;
+        g.spawn -= dt;
+        if(g.spawn <= 0){
+          g.spawn = rand(.9, 1.6) / k;
+          const r = Math.random();
+          const goldNow = !g.goldDone && g.t < 50 && Math.random() < 0.05;
+          if(goldNow) g.goldDone = true;
+          const type = goldNow ? 'golden' : r < .18 ? 'heavy' : r < .42 ? 'jeep' : 'light';
+          const spec = { golden:{ s:1.1, v:30, hp:2, pts:300 }, heavy:{ s:1.35, v:20, hp:3, pts:40 }, jeep:{ s:.75, v:62, hp:1, pts:25 }, light:{ s:1, v:34, hp:1, pts:10 } }[type];
+          g.tanks.push({ type, x:rand(40, AW-40), y:-30, v:spec.v*(1+(k-1)*.35), s:spec.s, hp:spec.hp, max:spec.hp, pts:spec.pts, ph:rand(0,6), sway:rand(10,30), flash:0 });
+        }
+        g.tanks.forEach(t => { t.y += t.v*dt; t.ph += dt*.8; t.dx = Math.cos(t.ph)*t.sway*dt; t.x = Math.max(24, Math.min(AW-24, t.x + t.dx)); t.flash -= dt; });
+        g.tanks = g.tanks.filter(t => {
+          if(t.hp <= 0) return false;
+          if(t.y > AH-100){
+            g.hearts--; boom(t.x, AH-100, true); sfx.miss(); popText(t.x, AH-120, 'BREAKTHROUGH', '#e3653f');
+            if(g.hearts <= 0) AR.done = 'overrun';
+            return false;
+          }
+          return true;
+        });
+        g.shells = g.shells.filter(sh => {
+          sh.t += dt;
+          const f = Math.min(1, sh.t/sh.T);
+          sh.cx = sh.x + (sh.tx-sh.x)*f; sh.cy = sh.y + (sh.ty-sh.y)*f;
+          let target = null;
+          for(const t of g.tanks){ if(t.hp>0 && Math.hypot(t.x-sh.cx, t.y-sh.cy) < 18*t.s + 6){ target = t; break; } }
+          if(!target && f < 1) return true;
+          if(target){
+            target.hp--; target.flash = .15;
+            if(target.hp <= 0){
+              g.combo++; g.comboT = 2;
+              const mult = Math.min(4, 1 + Math.floor(g.combo/3));
+              AR.score += target.pts*mult;
+              boom(target.x, target.y, target.type==='heavy' || target.type==='golden'); sfx.boom();
+              if(target.type==='golden') award('golden');
+              popText(target.x, target.y-20, `+${target.pts*mult}${mult>1?'  x'+mult:''}`);
+              g.scorch.push({ x:target.x, y:target.y, r:16*target.s });
+            } else { boom(sh.cx, sh.cy, false); tone(420,.06,'square',.04); popText(target.x, target.y-20, 'CLANG', '#ece6d0'); }
+          } else {
+            AR.rings.push({ x:sh.cx, y:sh.cy, r:3, max:18, life:.25 });
+            g.scorch.push({ x:sh.cx, y:sh.cy, r:7 });
+          }
+          if(g.scorch.length > 40) g.scorch.shift();
+          return false;
+        });
+      },
+      draw(g, c){
+        c.fillStyle = '#56603d'; c.fillRect(0,0,AW,AH);
+        c.fillStyle = 'rgba(30,35,20,.35)';
+        g.scorch.forEach(s => { c.beginPath(); c.arc(s.x, s.y, s.r, 0, 7); c.fill(); });
+        c.fillStyle = '#7d7764'; g.rocks.forEach(r => { c.beginPath(); c.ellipse(r.x, r.y, r.r, r.r*.7, 0, 0, 7); c.fill(); });
+        c.strokeStyle = 'rgba(140,160,90,.5)'; c.lineWidth = 1.2;
+        g.tufts.forEach(t => { c.beginPath(); c.moveTo(t.x-3,t.y); c.lineTo(t.x-1,t.y-5); c.moveTo(t.x,t.y); c.lineTo(t.x,t.y-6); c.moveTo(t.x+3,t.y); c.lineTo(t.x+1,t.y-5); c.stroke(); });
+        // your side + sandbag line
+        c.fillStyle = '#3f4a2d'; c.fillRect(0, AH-92, AW, 92);
+        for(let x=6; x<AW; x+=22){ c.fillStyle = '#b4a678'; c.beginPath(); c.ellipse(x+5, AH-96, 11, 6, 0, 0, 7); c.fill(); c.strokeStyle = '#6e6447'; c.lineWidth = 1; c.stroke(); }
+        g.tanks.forEach(t => drawTank(c, t));
+        c.fillStyle = '#ffd27a';
+        g.shells.forEach(sh => { if(sh.cx!==undefined){ c.beginPath(); c.arc(sh.cx, sh.cy, 3.2, 0, 7); c.fill(); } });
+        // player tank
+        const px = AW/2, py = AH-48;
+        c.fillStyle = '#2b2f22'; c.fillRect(px-28, py-22, 10, 44); c.fillRect(px+18, py-22, 10, 44);
+        c.fillStyle = '#a99c70'; c.fillRect(px-20, py-20, 40, 40);
+        c.save(); c.translate(px, py); c.rotate(g.aim);
+        c.fillStyle = '#c8b98a'; c.fillRect(0, -3.5, 34, 7);
+        c.restore();
+        c.fillStyle = '#c8b98a'; c.beginPath(); c.arc(px, py, 12, 0, 7); c.fill();
+        c.strokeStyle = '#6e6447'; c.lineWidth = 1.5; c.stroke();
+        // hearts
+        for(let i=0;i<5;i++){ c.fillStyle = i < g.hearts ? '#e3653f' : 'rgba(0,0,0,.35)'; c.fillRect(14 + i*18, AH-24, 12, 12); }
+        c.fillStyle = '#ece6d0'; c.font = "600 12px 'Barlow Condensed', sans-serif"; c.textAlign = 'left'; c.fillText('LINE', 14, AH-30);
+        if(g.combo >= 3){ c.fillStyle = '#ffd27a'; c.font = "20px 'Black Ops One', Impact, sans-serif"; c.textAlign = 'center'; c.fillText(`COMBO x${Math.min(4,1+Math.floor(g.combo/3))}`, AW/2, 70); }
+      }
+    }
+  };
+
+
+  let lastReport = null;
+  const segDist = (px,py,ax,ay,bx,by) => { const dx=bx-ax, dy=by-ay, L=dx*dx+dy*dy; let t = L ? ((px-ax)*dx+(py-ay)*dy)/L : 0; t = Math.max(0,Math.min(1,t)); return Math.hypot(px-(ax+dx*t), py-(ay+dy*t)); };
+  function skyRoute(g){ return [g.base, ...g.wp, g.target]; }
+  function skyLen(pts){ let L=0; for(let i=1;i<pts.length;i++) L += Math.hypot(pts[i][0]-pts[i-1][0], pts[i][1]-pts[i-1][1]); return L; }
+  function skyRisk(g){
+    const pts = skyRoute(g); let n = 0;
+    g.aa.forEach(a => { for(let i=1;i<pts.length;i++){ if(segDist(a.x,a.y,...pts[i-1],...pts[i]) < a.r){ n++; break; } } });
+    return n;
+  }
+  GAMES.skystrike = {
+    name:'Operation Skystrike', cost:20, untimed:true,
+    blurb:'Two parts: plan a bombing run on an enemy base, then fly it.',
+    help:'Part 1: tap the map to add waypoints (up to 5) and steer around the red anti-aircraft zones without running out of fuel. Part 2: tap missiles to shoot them down, then hit DROP BOMB when the crosshair is on the base.',
+    icon:'<svg viewBox="0 0 44 30" aria-hidden="true"><circle cx="33" cy="9" r="7" fill="none" stroke="var(--bad)" stroke-width="2"/><path d="M33 0v18M24 9h18" stroke="var(--bad)" stroke-width="1.5"/><path fill="var(--khaki)" d="M2 22 L12 20 L18 13 L22 13 L19 20 L29 20 Q35 22 29 24 L19 24 L22 30 L18 30 L12 24 Z"/><path d="M6 16 Q14 6 26 8" fill="none" stroke="var(--amber)" stroke-width="1.5" stroke-dasharray="2 2"/></svg>',
+    phaseLabel(g){ return g.phase==='plan' ? 'PART 1 · PLAN' : 'PART 2 · FLY'; },
+    endTitle(d){ return { direct:'Direct hit!', hit:'Target hit', near:'Base damaged', miss:'Bomb missed', down:'Plane shot down', nodrop:'No bomb dropped' }[d] || 'Mission over'; },
+    report(r){
+      if(!r) return '';
+      return `<div class="panel"><h2>Mission report</h2><p>${r.lines.join('<br>')}</p></div>`;
+    },
+    init(){
+      const target = [rand(90,310), rand(80,140)];
+      const base = [rand(70,330), 505];
+      const aa = [];
+      // one site guarding the straight line, the rest scattered
+      const mx = (target[0]+base[0])/2 + rand(-30,30), my = (target[1]+base[1])/2 + rand(-40,40);
+      aa.push({ x:mx, y:my, r:rand(55,68), cd:rand(0,1) });
+      let tries = 0;
+      while(aa.length < 5 && tries++ < 400){
+        const a = { x:rand(30,370), y:rand(150,430), r:rand(42,60), cd:rand(0,1) };
+        if(Math.hypot(a.x-target[0], a.y-target[1]) < a.r+40) continue;
+        if(Math.hypot(a.x-base[0], a.y-base[1]) < a.r+40) continue;
+        if(aa.some(b => Math.hypot(a.x-b.x, a.y-b.y) < (a.r+b.r)*.75)) continue;
+        aa.push(a);
+      }
+      const straight = Math.hypot(target[0]-base[0], target[1]-base[1]);
+      const trees = Array.from({length:90}, () => ({ x:rand(0,AW), y:rand(40,AH), r:rand(2.5,5) }));
+      const river = []; const rx0 = rand(60,340);
+      for(let y=30;y<=AH+10;y+=10) river.push([rx0 + Math.sin(y/70)*40 + Math.sin(y/23)*8, y]);
+      return { phase:'plan', target, base, aa, wp:[], fuelMax: straight*1.8, trees, river,
+        armor:3, missiles:[], shot:0, bomb:null, dropped:false, s:0, path:null, plane:null, endIn:0, result:null, baseHit:false, report:null };
+    },
+    ctl(g){
+      const el = $('#arCtl'); el.hidden = false;
+      if(g.phase === 'plan'){
+        const L = skyLen(skyRoute(g)), over = L > g.fuelMax;
+        const pct = L/g.fuelMax, risk = skyRisk(g);
+        el.innerHTML = `<div class="sktip">PART 1 \u00b7 Tap the map to add waypoints around the red zones. Then press Launch to fly.</div><div class="skstat"><span class="label">Fuel</span><div class="bar"><i style="width:${Math.min(100,Math.round(pct*100))}%; background:${pct>1?'var(--bad)':pct>.85?'var(--amber)':'var(--good)'}"></i></div>
+          <span style="color:${risk?'var(--bad)':'var(--good)'}; font-family:var(--ui); font-weight:600">${over ? 'Route too long. Remove a waypoint.' : risk ? `Route crosses ${risk} anti-aircraft zone${risk>1?'s':''}` : 'Route is clear of anti-aircraft'}</span></div>
+          <button class="btn-sub" id="skUndo" type="button" ${g.wp.length?'':'disabled'}>Undo</button>
+          <button class="btn-sub" id="skClear" type="button" ${g.wp.length?'':'disabled'}>Clear</button>
+          <button class="btn-main" id="skGo" type="button" ${over?'disabled':''}>${over ? 'Not enough fuel' : 'Launch \u25b6 Part 2'}</button>`;
+        $('#skUndo').onclick = () => { g.wp.pop(); this.ctl(g); };
+        $('#skClear').onclick = () => { g.wp = []; this.ctl(g); };
+        $('#skGo').onclick = () => this.launch(g);
+      } else if(g.phase === 'fly'){
+        el.innerHTML = `<div class="sktip">PART 2 \u00b7 Tap missiles to shoot them. Drop the bomb when the crosshair is on the base.</div><button class="btn-drop" id="skDrop" type="button" ${g.dropped?'disabled':''}>${g.dropped ? 'Bomb away' : 'DROP BOMB'}</button>`;
+        $('#skDrop').onclick = () => this.drop(g);
+      } else el.innerHTML = '';
+    },
+    launch(g){
+      const pts = skyRoute(g);
+      const last = pts[pts.length-1], prev = pts[pts.length-2];
+      const a = Math.atan2(last[1]-prev[1], last[0]-prev[0]);
+      pts.push([last[0]+Math.cos(a)*600, last[1]+Math.sin(a)*600]);
+      g.path = pts; g.total = skyLen(pts); g.planLen = skyLen(skyRoute(g)); g.risk = skyRisk(g);
+      payArcade();
+      g.phase = 'fly'; g.s = 0;
+      tone(300,.2,'sawtooth',.05); tone(450,.25,'sawtooth',.05,.15);
+      this.ctl(g);
+    },
+    drop(g){
+      if(g.phase!=='fly' || g.dropped) return;
+      g.dropped = true;
+      const p = g.plane;
+      g.bomb = { x:p.x, y:p.y, vx:Math.cos(p.a)*SKY_V, vy:Math.sin(p.a)*SKY_V, t:0, T:SKY_FALL };
+      tone(700,.4,'triangle',.04); tone(300,.5,'triangle',.04,.2);
+      this.ctl(g);
+    },
+    tap(g, x, y){
+      if(g.phase === 'plan'){
+        if(y < 40 || g.wp.length >= 5) return;
+        if(Math.hypot(x-g.target[0], y-g.target[1]) < 20) return;
+        g.wp.push([x,y]); sfx.key(); this.ctl(g);
+      } else if(g.phase === 'fly'){
+        let hit = false;
+        g.missiles = g.missiles.filter(m => {
+          if(Math.hypot(m.x-x, m.y-y) < 30){ boom(m.x, m.y, false); hit = true; g.shot++; popText(m.x, m.y-12, '+25'); return false; }
+          return true;
+        });
+        if(hit) sfx.boom(); else AR.rings.push({ x, y, r:3, max:22, life:.2 });
+      }
+    },
+    planePos(g){
+      let s = g.s, pts = g.path;
+      for(let i=1;i<pts.length;i++){
+        const [ax,ay]=pts[i-1], [bx,by]=pts[i], L=Math.hypot(bx-ax,by-ay);
+        if(s <= L || i===pts.length-1){ const f=Math.min(1, s/L); return { x:ax+(bx-ax)*f, y:ay+(by-ay)*f, a:Math.atan2(by-ay,bx-ax) }; }
+        s -= L;
+      }
+    },
+    finish(g){
+      const res = g.result;
+      const hitPts = { direct:600, hit:350, near:100, miss:0, nodrop:0, down:0 }[res];
+      const fuelLeft = g.planLen ? Math.max(0, 1 - g.planLen/g.fuelMax) : 0;
+      const fuelPts = res==='down' ? 0 : Math.round(fuelLeft*200);
+      const armorPts = res==='down' ? 0 : g.armor*100;
+      AR.score = hitPts + armorPts + g.shot*25 + fuelPts;
+      g.report = { lines: [
+        `Target: ${{ direct:'direct hit, base destroyed (600)', hit:'hit, base destroyed (350)', near:'close, base damaged (100)', miss:'missed (0)', nodrop:'no bomb dropped (0)', down:'never reached it (0)' }[res]}`,
+        `Missiles shot down: ${g.shot} (${g.shot*25})`,
+        res==='down' ? 'Plane lost: no armor or fuel bonus' : `Armor left: ${g.armor} of 3 (${armorPts})`,
+        res==='down' ? '' : `Fuel saved by your route: ${Math.round(fuelLeft*100)}% (${fuelPts})`,
+        `Anti-aircraft zones on your route: ${g.risk}`
+      ].filter(Boolean) };
+      if(res === 'direct'){ award('bullseye'); if(g.armor === 3) award('untouchable'); }
+      AR.done = res;
+    },
+    update(g, dt){
+      if(g.phase !== 'fly') return;
+      if(g.endIn > 0){ g.endIn -= dt; if(g.endIn <= 0) this.finish(g); }
+      if(g.result === 'down') { g.missiles = []; return; }
+      if(g.s < g.total) g.s += SKY_V*dt;
+      g.plane = this.planePos(g);
+      const p = g.plane;
+      if(!g.result && (p.x < -30 || p.x > AW+30 || p.y < -30 || p.y > AH+30)){
+        if(!g.dropped){ g.result = 'nodrop'; g.endIn = .3; }
+      }
+      // anti-aircraft fire
+      g.aa.forEach(a => {
+        a.cd -= dt;
+        if(!g.result && a.cd <= 0 && Math.hypot(p.x-a.x, p.y-a.y) < a.r + 6){
+          a.cd = rand(1.4, 2.0);
+          const ang = Math.atan2(p.y-a.y, p.x-a.x);
+          g.missiles.push({ x:a.x, y:a.y, vx:Math.cos(ang)*80, vy:Math.sin(ang)*80, life:4 });
+          tone(180,.15,'square',.03);
+        }
+      });
+      g.missiles = g.missiles.filter(m => {
+        const ang = Math.atan2(p.y-m.y, p.x-m.x), sp = 88;
+        m.vx += (Math.cos(ang)*sp - m.vx)*Math.min(1, dt*1.6);
+        m.vy += (Math.sin(ang)*sp - m.vy)*Math.min(1, dt*1.6);
+        m.x += m.vx*dt; m.y += m.vy*dt; m.life -= dt;
+        if(Math.hypot(m.x-p.x, m.y-p.y) < 11){
+          g.armor--; boom(p.x, p.y, false); sfx.miss(); popText(p.x, p.y-18, 'HIT!', '#e3653f');
+          if(g.armor <= 0 && !g.result){ g.result = 'down'; boom(p.x, p.y, true); g.endIn = 1.2; }
+          return false;
+        }
+        return m.life > 0;
+      });
+      if(g.bomb){
+        const b = g.bomb; b.t += dt;
+        if(b.t >= b.T){
+          const bx = b.x + b.vx*b.T, by = b.y + b.vy*b.T;
+          const d = Math.hypot(bx-g.target[0], by-g.target[1]);
+          const res = d < 16 ? 'direct' : d < 34 ? 'hit' : d < 60 ? 'near' : 'miss';
+          boom(bx, by, true); boom(bx+8, by-6, res!=='miss');
+          if(res==='direct' || res==='hit'){ g.baseHit = true; boom(g.target[0], g.target[1], true); }
+          sfx.boom(); tone(55,.8,'sawtooth',.08,.1);
+          popText(bx, by-24, { direct:'DIRECT HIT!', hit:'TARGET HIT', near:'CLOSE!', miss:'MISS' }[res], res==='miss' ? '#e3653f' : '#ffd27a');
+          g.bomb = null;
+          if(!g.result || g.result==='nodrop'){ g.result = res; g.endIn = 1.8; }
+        }
+      }
+    },
+    draw(g, c){
+      c.fillStyle = '#56603d'; c.fillRect(0,0,AW,AH);
+      // river
+      c.lineCap = 'round'; c.lineJoin = 'round';
+      c.beginPath(); g.river.forEach(([x,y],i) => i ? c.lineTo(x,y) : c.moveTo(x,y));
+      c.strokeStyle = '#3e5c5e'; c.lineWidth = 12; c.stroke();
+      c.strokeStyle = 'rgba(150,180,175,.3)'; c.lineWidth = 2; c.stroke();
+      c.fillStyle = '#3d5a2c'; g.trees.forEach(t => { c.beginPath(); c.arc(t.x, t.y, t.r, 0, 7); c.fill(); });
+      // airfield
+      const [bx, by] = g.base;
+      c.fillStyle = '#4a4a40'; c.fillRect(bx-40, by-8, 80, 16);
+      c.strokeStyle = '#ece6d0'; c.setLineDash([6,6]); c.lineWidth = 1.5; c.beginPath(); c.moveTo(bx-34, by); c.lineTo(bx+34, by); c.stroke(); c.setLineDash([]);
+      c.fillStyle = '#c8b98a'; c.font = "600 11px 'Barlow Condensed', sans-serif"; c.textAlign = 'center'; c.fillText('YOUR AIRFIELD', bx, by+22);
+      // AA zones
+      g.aa.forEach(a => {
+        c.fillStyle = 'rgba(227,101,63,.16)'; c.beginPath(); c.arc(a.x, a.y, a.r, 0, 7); c.fill();
+        c.strokeStyle = 'rgba(227,101,63,.7)'; c.setLineDash([5,4]); c.lineWidth = 1.5; c.stroke(); c.setLineDash([]);
+        c.fillStyle = '#2d2a24'; c.beginPath(); c.arc(a.x, a.y, 7, 0, 7); c.fill();
+        c.strokeStyle = '#e3653f'; c.lineWidth = 2; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(a.x+6, a.y-9); c.moveTo(a.x, a.y); c.lineTo(a.x-6, a.y-9); c.stroke();
+      });
+      // enemy base
+      const [tx, ty] = g.target;
+      if(!g.baseHit){
+        c.fillStyle = '#3a3630'; c.fillRect(tx-22, ty-16, 44, 32);
+        c.fillStyle = '#6b4a3e'; c.fillRect(tx-16, ty-10, 12, 9); c.fillRect(tx+3, ty-10, 13, 9); c.fillRect(tx-10, ty+3, 20, 8);
+        c.strokeStyle = '#26221d'; c.lineWidth = 2; c.strokeRect(tx-22, ty-16, 44, 32);
+        c.fillStyle = '#e3653f'; c.beginPath(); c.moveTo(tx+18, ty-16); c.lineTo(tx+18, ty-32); c.lineTo(tx+30, ty-28); c.lineTo(tx+18, ty-24); c.fill();
+      } else {
+        c.fillStyle = '#26221d'; c.beginPath(); c.arc(tx, ty, 26, 0, 7); c.fill();
+        c.fillStyle = '#4a3a30'; c.fillRect(tx-14, ty-6, 8, 6); c.fillRect(tx+6, ty+2, 10, 5);
+      }
+      c.strokeStyle = 'rgba(230,169,48,.8)'; c.lineWidth = 1.5;
+      c.beginPath(); c.arc(tx, ty, 34, 0, 7); c.stroke();
+      c.fillStyle = '#e6a930'; c.font = "600 11px 'Barlow Condensed', sans-serif"; c.textAlign = 'center'; c.fillText('ENEMY BASE', tx, ty+48);
+
+      if(g.phase === 'plan'){
+        const pts = skyRoute(g);
+        for(let i=1;i<pts.length;i++){
+          const danger = g.aa.some(a => segDist(a.x,a.y,...pts[i-1],...pts[i]) < a.r);
+          c.strokeStyle = danger ? '#e3653f' : '#ffd27a'; c.lineWidth = 3; c.setLineDash([8,6]);
+          c.beginPath(); c.moveTo(...pts[i-1]); c.lineTo(...pts[i]); c.stroke();
+        }
+        c.setLineDash([]);
+        g.wp.forEach(([x,y],i) => {
+          c.fillStyle = '#ffd27a'; c.beginPath(); c.arc(x, y, 10, 0, 7); c.fill();
+          c.fillStyle = '#1f1e1a'; c.font = "14px 'Black Ops One', Impact, sans-serif"; c.textAlign = 'center'; c.fillText(String(i+1), x, y+5);
+        });
+      } else {
+        // flown path
+        c.strokeStyle = 'rgba(255,210,122,.35)'; c.lineWidth = 2; c.setLineDash([4,6]);
+        c.beginPath(); g.path.forEach((p,i) => i ? c.lineTo(...p) : c.moveTo(...p)); c.stroke(); c.setLineDash([]);
+        const p = g.plane || this.planePos(g);
+        // bomb sight
+        if(!g.dropped && g.result !== 'down'){
+          const sx = p.x + Math.cos(p.a)*SKY_V*SKY_FALL, sy = p.y + Math.sin(p.a)*SKY_V*SKY_FALL;
+          c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 1.5;
+          c.beginPath(); c.arc(sx, sy, 9, 0, 7); c.moveTo(sx-14, sy); c.lineTo(sx+14, sy); c.moveTo(sx, sy-14); c.lineTo(sx, sy+14); c.stroke();
+        }
+        if(g.bomb){
+          const b = g.bomb, f = b.t/b.T;
+          const x = b.x + b.vx*b.t, y = b.y + b.vy*b.t;
+          c.fillStyle = 'rgba(0,0,0,.3)'; c.beginPath(); c.arc(x, y, 4, 0, 7); c.fill();
+          c.fillStyle = '#26221d'; c.beginPath(); c.arc(x, y - (1-f)*14, 4*(1.4-f*.6), 0, 7); c.fill();
+        }
+        // missiles
+        g.missiles.forEach(m => {
+          const a = Math.atan2(m.vy, m.vx);
+          c.save(); c.translate(m.x, m.y); c.rotate(a);
+          c.fillStyle = 'rgba(255,210,122,.5)'; c.beginPath(); c.moveTo(-14,0); c.lineTo(-6,-3); c.lineTo(-6,3); c.fill();
+          c.fillStyle = '#ece6d0'; c.fillRect(-6,-2,12,4); c.fillStyle = '#e3653f'; c.fillRect(4,-2,3,4);
+          c.restore();
+        });
+        if(g.result !== 'down'){
+          c.save(); c.translate(p.x+6, p.y+10); c.rotate(p.a); c.fillStyle = 'rgba(0,0,0,.25)'; c.scale(.5,.5); c.translate(-36,-20); c.fill(new Path2D('M4 20 L24 16 L36 3 L44 3 L38 16 L58 16 Q70 20 58 24 L38 24 L44 37 L36 37 L24 24 Z')); c.restore();
+          c.save(); c.translate(p.x, p.y); c.rotate(p.a); c.scale(.55,.55); c.translate(-36,-20);
+          c.fillStyle = '#c8b98a'; c.fill(new Path2D('M4 20 L24 16 L36 3 L44 3 L38 16 L58 16 Q70 20 58 24 L38 24 L44 37 L36 37 L24 24 Z'));
+          c.restore();
+        }
+        // armor
+        c.fillStyle = '#ece6d0'; c.font = "600 12px 'Barlow Condensed', sans-serif"; c.textAlign = 'left'; c.fillText('ARMOR', 12, 56);
+        for(let i=0;i<3;i++){ c.fillStyle = i < g.armor ? '#8bbd52' : 'rgba(0,0,0,.4)'; c.fillRect(64 + i*16, 46, 12, 12); }
+      }
+    }
+  };
+  const SKY_V = 72, SKY_FALL = 1.1;
+
+  function drawPlane(c, p){
+    if(p.type === 'ufo'){
+      c.save(); c.translate(p.x, p.y);
+      c.fillStyle = 'rgba(183,217,126,.25)'; c.beginPath(); c.moveTo(-8,6); c.lineTo(8,6); c.lineTo(16,40); c.lineTo(-16,40); c.fill();
+      c.fillStyle = '#9fb8b0'; c.beginPath(); c.ellipse(0, -4, 9, 8, 0, Math.PI, 0); c.fill();
+      c.fillStyle = p.flash > 0 ? '#fff' : '#6d7a78'; c.beginPath(); c.ellipse(0, 0, 22, 6, 0, 0, 7); c.fill();
+      ['#ffd27a','#b7d97e','#e3653f'].forEach((col,i) => { c.fillStyle = col; c.beginPath(); c.arc(-12 + i*12, 1, 2, 0, 7); c.fill(); });
+      c.restore(); return;
+    }
+    c.save(); c.translate(p.x, p.y); c.scale(p.dir*p.s, p.s);
+    const body = p.flash > 0 ? '#ffffff' : p.type==='bomber' ? '#3a3a36' : p.type==='fighter' ? '#5c5a52' : '#4a4a44';
+    c.fillStyle = 'rgba(0,0,0,.18)'; c.beginPath(); c.ellipse(4, 26, 18, 3, 0, 0, 7); c.fill();
+    c.fillStyle = body;
+    c.beginPath(); c.ellipse(0, 0, 22, 5, 0, 0, 7); c.fill();
+    c.beginPath(); c.moveTo(-4,-2); c.lineTo(-12,-16); c.lineTo(-4,-16); c.lineTo(8,-2); c.fill();
+    c.beginPath(); c.moveTo(-4,2); c.lineTo(-10,12); c.lineTo(-3,12); c.lineTo(8,2); c.fill();
+    c.beginPath(); c.moveTo(-18,-1); c.lineTo(-24,-10); c.lineTo(-20,-10); c.lineTo(-14,-1); c.fill();
+    c.fillStyle = '#e3653f'; c.fillRect(-16, -1.5, 5, 3);
+    c.fillStyle = 'rgba(180,210,220,.8)'; c.beginPath(); c.ellipse(10, -3, 5, 2.4, 0, 0, 7); c.fill();
+    if(p.type==='bomber' && p.hp===1){ c.fillStyle = 'rgba(40,40,40,.6)'; c.beginPath(); c.arc(-26, 0, 5, 0, 7); c.fill(); }
+    c.restore();
+  }
+  function drawTank(c, t){
+    c.save(); c.translate(t.x, t.y); c.scale(t.s, t.s);
+    const hull = t.flash > 0 ? '#ffffff' : t.type==='golden' ? '#e6b94a' : t.type==='heavy' ? '#4e3c34' : t.type==='jeep' ? '#8a7a5a' : '#6b4a3e';
+    if(t.type==='jeep'){
+      c.fillStyle = '#222'; [[-11,-9],[7,-9],[-11,5],[7,5]].forEach(([x,y]) => c.fillRect(x, y, 5, 6));
+      c.fillStyle = hull; c.fillRect(-9, -13, 18, 26);
+      c.fillStyle = '#3a342a'; c.fillRect(-7, -2, 14, 6);
+    } else {
+      c.fillStyle = '#26221d'; c.fillRect(-17, -16, 7, 32); c.fillRect(10, -16, 7, 32);
+      c.fillStyle = hull; c.fillRect(-12, -15, 24, 30);
+      c.fillStyle = 'rgba(0,0,0,.25)'; c.fillRect(-12, 9, 24, 6);
+      c.fillStyle = hull; c.beginPath(); c.arc(0, 0, 8, 0, 7); c.fill();
+      c.strokeStyle = 'rgba(0,0,0,.4)'; c.lineWidth = 1.2; c.stroke();
+      c.fillStyle = hull; c.fillRect(-2.5, 4, 5, 20);
+      c.fillStyle = '#e3653f'; c.fillRect(-12, -15, 24, 3);
+    }
+    c.restore();
+    if(t.max > 1){
+      c.fillStyle = 'rgba(0,0,0,.5)'; c.fillRect(t.x-16, t.y-30, 32, 4);
+      c.fillStyle = '#e3653f'; c.fillRect(t.x-16, t.y-30, 32*t.hp/t.max, 4);
+    }
+  }
+
+  function startArcade(kind){
+    const g = GAMES[kind], cost = g.cost || COST;
+    if((S.coins||0) < cost) return;
+    disarm(); updateSound(); show('arcade');
+    missionAwards = [];
+    $('#arTitle').textContent = g.name;
+    $('#arHelp').textContent = g.help;
+    const cv = $('#arc'), dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = AW*dpr; cv.height = AH*dpr;
+    AR = { paid:false, cost, started:Date.now(), kind, game:g, s:g.init(), score:0, parts:[], rings:[], texts:[], shake:0, last:performance.now(), raf:0, over:false, done:null, dpr, startT:1.2 };
+    AR.s.t = 60;
+    $('#arCtl').hidden = true; $('#arCtl').innerHTML = '';
+    if(g.ctl) g.ctl(AR.s);
+    AR.raf = requestAnimationFrame(arcLoop);
+  }
+  // coins are taken on the first real action (a shot, or Launch in Skystrike), never just for opening a game
+  function payArcade(){
+    if(!AR || AR.paid) return;
+    AR.paid = true; S.coins = Math.max(0, (S.coins||0) - AR.cost); save();
+  }
+  function stopArcade(){ if(AR){ cancelAnimationFrame(AR.raf); AR = null; } const c = $('#arCtl'); c.hidden = true; c.innerHTML = ''; }
+  function arcLoop(now){
+    if(!AR) return;
+    const dt = Math.min(.05, (now - AR.last)/1000); AR.last = now;
+    if(AR.startT > 0) AR.startT -= dt;
+    else if(!AR.over){
+      if(!AR.game.untimed) AR.s.t -= dt;
+      AR.game.update(AR.s, dt);
+      if(!AR) return;
+      if(AR.s.t <= 0 || AR.done){ AR.over = true; setTimeout(arcadeDone, 900); }
+    }
+    AR.parts.forEach(p => { p.x += p.vx*dt; p.y += p.vy*dt; p.vx *= .94; p.vy = p.vy*.94 + 30*dt; p.life -= dt; });
+    AR.parts = AR.parts.filter(p => p.life > 0);
+    AR.rings.forEach(r => { r.life -= dt; r.r += (r.max - r.r)*.3; });
+    AR.rings = AR.rings.filter(r => r.life > 0);
+    AR.texts.forEach(t => { t.life -= dt; t.y -= 30*dt; });
+    AR.texts = AR.texts.filter(t => t.life > 0);
+    AR.shake *= .85;
+    arcDraw();
+    AR.raf = requestAnimationFrame(arcLoop);
+  }
+  function arcDraw(){
+    const c = $('#arc').getContext('2d');
+    c.setTransform(AR.dpr,0,0,AR.dpr,0,0);
+    if(AR.shake > .3 && !reduced()) c.translate(rand(-AR.shake,AR.shake), rand(-AR.shake,AR.shake));
+    AR.game.draw(AR.s, c);
+    AR.rings.forEach(r => { c.strokeStyle = `rgba(255,210,122,${Math.max(0,r.life*3)})`; c.lineWidth = 3; c.beginPath(); c.arc(r.x, r.y, r.r, 0, 7); c.stroke(); });
+    AR.parts.forEach(p => { c.globalAlpha = Math.max(0, p.life/p.max); c.fillStyle = p.c; c.beginPath(); c.arc(p.x, p.y, p.r, 0, 7); c.fill(); });
+    c.globalAlpha = 1;
+    c.textAlign = 'center'; c.font = "18px 'Black Ops One', Impact, sans-serif";
+    AR.texts.forEach(t => { c.globalAlpha = Math.min(1, t.life*2); c.lineWidth = 3; c.strokeStyle = 'rgba(0,0,0,.6)'; c.strokeText(t.text, t.x, t.y); c.fillStyle = t.color; c.fillText(t.text, t.x, t.y); });
+    c.globalAlpha = 1;
+    // HUD
+    c.setTransform(AR.dpr,0,0,AR.dpr,0,0);
+    c.fillStyle = 'rgba(20,22,15,.55)'; c.fillRect(0,0,AW,36);
+    c.fillStyle = '#ece6d0'; c.font = "20px 'Black Ops One', Impact, sans-serif";
+    c.textAlign = 'left'; c.fillText(`SCORE ${AR.score}`, 12, 25);
+    if(AR.game.untimed){ c.textAlign = 'right'; c.fillStyle = '#e6a930'; c.fillText(AR.game.phaseLabel(AR.s), AW-12, 25); }
+    else {
+      const t = Math.max(0, Math.ceil(AR.s.t));
+      c.textAlign = 'right'; c.fillStyle = t <= 10 ? '#e3653f' : '#ece6d0'; c.fillText(`0:${String(t).padStart(2,'0')}`, AW-12, 25);
+    }
+    if(AR.startT > 0){
+      c.fillStyle = 'rgba(20,22,15,.6)'; c.fillRect(0, AH/2-50, AW, 100);
+      c.fillStyle = '#e6a930'; c.textAlign = 'center'; c.font = "44px 'Black Ops One', Impact, sans-serif";
+      c.fillText(AR.startT > .5 ? 'READY' : 'GO!', AW/2, AH/2+16);
+    } else if(AR.over){
+      c.fillStyle = 'rgba(20,22,15,.6)'; c.fillRect(0, AH/2-50, AW, 100);
+      c.fillStyle = '#e6a930'; c.textAlign = 'center'; c.font = "34px 'Black Ops One', Impact, sans-serif";
+      c.fillText(AR.game.endTitle ? AR.game.endTitle(AR.done).toUpperCase() : AR.done === 'overrun' ? 'LINE OVERRUN' : "TIME'S UP", AW/2, AH/2+14);
+    }
+  }
+  $('#arc').addEventListener('pointerdown', e => {
+    if(!AR || AR.over || AR.startT > 0) return;
+    e.preventDefault();
+    const r = e.currentTarget.getBoundingClientRect();
+    if(!AR.game.untimed) payArcade();
+    AR.game.tap(AR.s, (e.clientX - r.left)/r.width*AW, (e.clientY - r.top)/r.height*AH);
+  });
+  function arcadeDone(){
+    if(!AR) return;
+    const { kind, score, done, started } = AR; lastReport = AR.s.report; stopArcade();
+    S.best = S.best || {};
+    const prev = S.best[kind] || 0, record = score > prev;
+    if(record || S.best[kind] === undefined) S.best[kind] = Math.max(score, prev);
+    save(); sfx.win();
+    recordSession({ kind:'arcade', game:kind, sec:Math.round((Date.now()-started)/1000), score });
+    const g = GAMES[kind];
+    screens.debrief.innerHTML = `
+      <header class="masthead" style="text-align:center; align-items:center">
+        <span class="label">${g.name}</span>
+        <h1>${g.endTitle ? g.endTitle(done) : done === 'overrun' ? 'Line overrun' : "Time's up"}</h1>
+      </header>
+      <div class="stats" style="grid-template-columns:repeat(2, minmax(0,1fr))">
+        <div><strong>${score}</strong><span class="label">Score</span></div>
+        <div><strong>${S.best[kind]}</strong><span class="label">Best</span></div>
+      </div>
+      ${g.report ? g.report(lastReport) : ''}
+      ${record && prev > 0 ? `<div class="promo"><span class="label" style="color:var(--ink)">New record</span><div class="stamp pop">Beat your best by ${score-prev}</div></div>` : ''}
+      <div class="coinbar">${COIN}<span><b>${S.coins} coins left</b><br><span class="muted">${S.coins>=(g.cost||COST) ? 'Enough for another round.' : 'Win a math mission to earn more.'}</span></span></div>
+      <div class="row">
+        ${S.coins>=(g.cost||COST) ? `<button class="btn-main" id="arAgain" type="button">Play again · ${g.cost||COST}</button>` : `<button class="btn-main" id="arMission" type="button">Start a mission</button>`}
+        <button class="btn-sub" id="homeBtn" type="button">Back to HQ</button>
+      </div>`;
+    show('debrief');
+    const again = $('#arAgain'); if(again) again.onclick = () => startArcade(kind);
+    const mis = $('#arMission'); if(mis) mis.onclick = () => startTyped('bunker');
+    $('#homeBtn').onclick = goHome;
+  }
+
+
+  // ---------- progress log + report ----------
+  let DBR = null, REMOTE = [], repUnsub = null, syncing = false, dbState = 'checking';
+  const MODE_NAMES = { defend:'Counterattack', bunker:'Bunker Assault', code:'Code Breaker', air:'Air Defense', convoy:'Supply Convoy', planes:'Plane Blaster', tanks:'Tank Battle', skystrike:'Operation Skystrike' };
+  function factSnapshot(){ const o = {}; for(const k in S.facts){ if(S.facts[k].seen) o[k] = S.facts[k].lv; } return o; }
+  function recordSession(sess){
+    sess.id = Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+    sess.at = Date.now();
+    S.log = S.log || [];
+    S.log.push(sess);
+    if(S.log.length > 400) S.log = S.log.slice(-400);
+    save();
+    syncPending();
+  }
+  async function syncPending(){
+    if(!DBR || syncing) return;
+    syncing = true;
+    try{
+      for(const sess of (S.log||[])){
+        if(sess.synced) continue;
+        const body = Object.assign({}, sess); delete body.synced;
+        await DBR.collection('stats').doc(sess.id).set(body);
+        sess.synced = true; save();
+      }
+    }catch(e){ /* try again after the next mission */ }
+    syncing = false;
+  }
+  (async () => {
+    try{
+      if(!window.claude || !window.claude.use){ dbState = 'local'; return; }
+      const [db, user] = await Promise.all([claude.use('db'), claude.use('user')]);
+      const owner = user ? await user.isOwner() : false;
+      if(db && owner){ DBR = db; dbState = 'live'; syncPending(); }
+      else dbState = 'local';
+    }catch(e){ dbState = 'local'; }
+    if(current === 'report') openReport();
+  })();
+
+  function openReport(){
+    disarm(); show('report');
+    if(DBR && !repUnsub){
+      repUnsub = DBR.collection('stats').limit(1000).onSnapshot(snap => {
+        REMOTE = snap.docs.map(d => d.data()).filter(Boolean);
+        if(current === 'report') renderReport();
+      }, () => { repUnsub = null; });
+    }
+    renderReport();
+  }
+  $('#repBack').onclick = goHome;
+  window.addEventListener('hashchange', () => { if(location.hash === '#report') openReport(); });
+
+  const med = arr => { const v = arr.filter(x => x != null).sort((a,b)=>a-b); if(!v.length) return null; const m = Math.floor(v.length/2); return v.length%2 ? v[m] : (v[m-1]+v[m])/2; };
+  const pctTxt = x => x == null ? '–' : Math.round(x*100) + '%';
+  const secTxt = ms => ms == null ? '–' : (ms/1000).toFixed(1) + 's';
+  const minTxt = sec => sec < 60 ? Math.round(sec) + 's' : Math.round(sec/60) + ' min';
+  const dkey = t => { const d = new Date(t); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); };
+  const fmtWhen = t => { const d = new Date(t), old = Date.now() - t > 6*86400000;
+    return d.toLocaleString(undefined, old ? { month:'short', day:'numeric' } : { weekday:'short', hour:'numeric', minute:'2-digit' }); };
+  const acc = list => list.length ? list.filter(x => x.ok).length / list.length : null;
+
+  function renderReport(){
+    const map = new Map();
+    (S.log||[]).forEach(x => map.set(x.id, x));
+    REMOTE.forEach(x => { if(x && x.id) map.set(x.id, x); });
+    const ss = [...map.values()].sort((a,b) => a.at - b.at);
+    const math = ss.filter(x => x.kind === 'math'), arc = ss.filter(x => x.kind === 'arcade');
+    const sync = $('#repSync');
+    const lastAt = ss.length ? ss[ss.length-1].at : null;
+    if(dbState === 'live'){
+      sync.className = 'sync live';
+      sync.innerHTML = `<span class="dot"></span><span>Live. Synced from every device signed in to this account.${lastAt ? ` Last activity ${fmtWhen(lastAt)}.` : ''}</span>`;
+    } else {
+      sync.className = 'sync';
+      sync.innerHTML = `<span class="dot"></span><span>${dbState==='checking' ? 'Connecting…' : 'Showing practice saved on this device only. To see his iPad from your phone, the iPad must be signed in to the same Claude account that owns this game.'}</span>`;
+    }
+    const body = $('#repBody');
+    if(!math.length){
+      body.innerHTML = `<div class="panel"><h2>No missions yet</h2><p class="muted">Stats appear here after he finishes his first math mission: speed, accuracy, trouble facts and practice time for each day.</p></div>`;
+      return;
+    }
+    const now = Date.now(), D = 86400000;
+    const ans = math.flatMap(x => (x.answers||[]).map(a => Object.assign({ at:x.at, mode:x.mode }, a)));
+    const typed = ans.filter(a => a.k === 't');
+    const win = (list, from, to) => list.filter(a => a.at >= from && a.at < to);
+    const t7 = win(typed, now-7*D, now+1), t7p = win(typed, now-14*D, now-7*D);
+    const m7 = math.filter(x => x.at >= now-7*D), a7 = arc.filter(x => x.at >= now-7*D);
+    const mathSec7 = m7.reduce((s,x)=>s+(x.sec||0),0), arcSec7 = a7.reduce((s,x)=>s+(x.sec||0),0);
+    const acc7 = acc(t7), accP = acc(t7p);
+    const spd7 = med(t7.filter(a=>a.ok).map(a=>a.ms)), spdP = med(t7p.filter(a=>a.ok).map(a=>a.ms));
+    const latest = [...math].reverse().find(x => x.facts) || { facts: factSnapshot() };
+    const lv = k => latest.facts[k] ?? null;
+    let mastered = 0; ALL.forEach(([a,b]) => { if((lv(key(a,b))||0) >= 3) mastered++; });
+    let bunkers = 0; for(let n=1;n<=12;n++) for(let g=0;g<3;g++) if(baseFacts(n,g).every(f => (lv(key(...f))||0) >= 3)) bunkers++;
+    const days7 = new Set(m7.map(x => dkey(x.at))).size;
+    const delta = (cur, prev, better, fmt) => {
+      if(cur == null || prev == null) return '<span class="delta flat">No earlier week to compare</span>';
+      const diff = cur - prev; if(Math.abs(diff) < (fmt==='pct' ? .01 : 100)) return '<span class="delta flat">Same as the week before</span>';
+      const good = better === 'up' ? diff > 0 : diff < 0;
+      const txt = fmt === 'pct' ? `${diff>0?'+':''}${Math.round(diff*100)} pts` : `${diff>0?'+':'−'}${(Math.abs(diff)/1000).toFixed(1)}s`;
+      return `<span class="delta ${good?'up':'down'}">${txt} vs the week before</span>`;
+    };
+
+    // per-fact stats (typed recall)
+    const byFact = {};
+    typed.forEach(a => { const k = key(a.a, a.b); (byFact[k] = byFact[k] || []).push(a); });
+    const factStat = k => { const l = byFact[k] || []; return { n:l.length, acc:acc(l), med:med(l.filter(a=>a.ok).map(a=>a.ms)), wrongs:l.filter(a=>!a.ok && a.ans!=null).map(a=>a.ans) }; };
+
+    // 14-day chart
+    const days = []; for(let i=13;i>=0;i--){ const t = now - i*D; days.push({ k:dkey(t), d:new Date(t), m:0, a:0 }); }
+    const di = Object.fromEntries(days.map((d,i)=>[d.k,i]));
+    math.forEach(x => { const i = di[dkey(x.at)]; if(i!=null) days[i].m += (x.sec||0)/60; });
+    arc.forEach(x => { const i = di[dkey(x.at)]; if(i!=null) days[i].a += (x.sec||0)/60; });
+    const maxM = Math.max(5, ...days.map(d => d.m + d.a)); const top = Math.ceil(maxM/5)*5;
+    const CW = 340, CH = 150, L = 26, B = 22, T = 8, bw = (CW-L-4)/14;
+    const y = v => T + (CH-T-B) * (1 - v/top);
+    let chart = `<svg class="chart" viewBox="0 0 ${CW} ${CH}" width="100%" role="img" aria-label="Minutes practiced per day for 14 days">`;
+    [0, top/2, top].forEach(v => { chart += `<line x1="${L}" x2="${CW}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L-4}" y="${y(v)+4}" text-anchor="end">${v}</text>`; });
+    days.forEach((d,i) => {
+      const x = L + 2 + i*bw, w = bw-4;
+      if(d.m > 0) chart += `<rect x="${x}" y="${y(d.m)}" width="${w}" height="${y(0)-y(d.m)}" fill="var(--amber)" rx="1.5"><title>${d.d.toLocaleDateString()}: ${d.m.toFixed(1)} min math</title></rect>`;
+      if(d.a > 0) chart += `<rect x="${x}" y="${y(d.m+d.a)}" width="${w}" height="${y(d.m)-y(d.m+d.a)}" fill="var(--khaki)" opacity=".45" rx="1.5"><title>${d.a.toFixed(1)} min arcade</title></rect>`;
+      chart += `<text x="${x+w/2}" y="${CH-6}" text-anchor="middle">${'SMTWTFS'[d.d.getDay()]}</text>`;
+    });
+    chart += '</svg>';
+
+    // times-table breakdown
+    let tt = '';
+    for(let n=1;n<=12;n++){
+      const l = typed.filter(a => a.a===n || a.b===n);
+      const a = acc(l), m = med(l.filter(x=>x.ok).map(x=>x.ms));
+      let mc = 0; for(let j=1;j<=12;j++) if((lv(key(n,j))||0) >= 3) mc++;
+      tt += `<tr><td><b>${n}s</b></td><td>${l.length}</td>
+        <td>${pctTxt(a)}<span class="mini"><i style="width:${a==null?0:Math.round(a*100)}%; background:${a==null?'transparent':a>=.9?'var(--good)':a>=.75?'var(--amber)':'var(--bad)'}"></i></span></td>
+        <td>${secTxt(m)}</td><td>${mc}/12</td></tr>`;
+    }
+
+    // trouble facts
+    const trouble = Object.keys(byFact).map(k => Object.assign({ k }, factStat(k)))
+      .filter(f => f.acc < 1 || (f.med != null && f.med > 5000))
+      .sort((x,y) => (x.acc - y.acc) || ((y.med||0) - (x.med||0))).slice(0, 10);
+    const troubleRows = trouble.map(f => { const [a,b] = f.k.split('x').map(Number);
+      return `<tr><td><b>${a} × ${b}</b> <span class="muted">= ${a*b}</span></td><td>${f.n}</td><td class="${f.acc<.75?'down':''}">${pctTxt(f.acc)}</td><td class="${f.med>5000?'down':''}">${secTxt(f.med)}</td><td class="wrap">${f.wrongs.length ? f.wrongs.slice(-4).join(', ') : '<span class="muted">slow, not wrong</span>'}</td></tr>`; }).join('');
+
+    // heat grid
+    let hg = '<div class="gh">×</div>'; for(let c=1;c<=12;c++) hg += `<div class="gh">${c}</div>`;
+    for(let r=1;r<=12;r++){
+      hg += `<div class="gh">${r}</div>`;
+      for(let c=1;c<=12;c++){
+        const k = key(r,c), f = factStat(k), l = lv(k);
+        const cls = !f.n && l == null ? 'h-none' : (l||0) >= 3 ? 'h-good' : f.acc != null && f.acc < .75 ? 'h-bad' : f.med != null && f.med > 5000 ? 'h-slow' : 'h-ok';
+        hg += `<button type="button" class="${cls}" data-f="${r}x${c}" aria-label="${r} times ${c}">${f.med != null ? (f.med/1000).toFixed(1) : ''}</button>`;
+      }
+    }
+
+    // by mission type
+    const kinds = [['t','Typing recall (Bunker Assault, Code Breaker)'],['r','Reverse facts (Air Defense)'],['s','Skip-counting (Supply Convoy)']];
+    const kindRows = kinds.map(([k,label]) => { const l = ans.filter(a => a.k===k); return `<tr><td class="wrap">${label}</td><td>${l.length}</td><td>${pctTxt(acc(l))}</td><td>${secTxt(med(l.filter(a=>a.ok).map(a=>a.ms)))}</td></tr>`; }).join('');
+
+    // recent sessions
+    const recent = [...ss].reverse().slice(0, 15).map(x => {
+      if(x.kind === 'arcade') return `<tr><td>${fmtWhen(x.at)}</td><td class="wrap muted">${MODE_NAMES[x.game]||x.game} (arcade)</td><td>${minTxt(x.sec||0)}</td><td colspan="3" class="muted">Score ${x.score}</td></tr>`;
+      const l = x.answers||[], tl = l.filter(a=>a.k==='t');
+      return `<tr><td>${fmtWhen(x.at)}</td><td class="wrap">${MODE_NAMES[x.mode]||x.mode}</td><td>${minTxt(x.sec||0)}</td><td>${l.length}</td><td>${pctTxt(acc(l))}</td><td>${tl.length ? secTxt(med(tl.filter(a=>a.ok).map(a=>a.ms))) : '–'}</td></tr>`;
+    }).join('');
+
+    const allMathSec = math.reduce((s,x)=>s+(x.sec||0),0), allArcSec = arc.reduce((s,x)=>s+(x.sec||0),0);
+    body.innerHTML = `
+      <div class="tiles">
+        <div class="tile"><span class="label">Math this week</span><strong>${minTxt(mathSec7)}</strong><span class="delta flat">${m7.length} missions on ${days7} day${days7===1?'':'s'}</span></div>
+        <div class="tile"><span class="label">Accuracy this week</span><strong>${pctTxt(acc7)}</strong>${delta(acc7, accP, 'up', 'pct')}</div>
+        <div class="tile"><span class="label">Answer speed</span><strong>${secTxt(spd7)}</strong>${delta(spd7, spdP, 'down', 's')}</div>
+        <div class="tile"><span class="label">Facts mastered</span><strong>${mastered}<span class="muted" style="font-size:1rem"> / 78</span></strong><span class="delta flat">Fast and right on 2+ days</span></div>
+        <div class="tile"><span class="label">Bunkers taken</span><strong>${bunkers}<span class="muted" style="font-size:1rem"> / 36</span></strong><span class="delta flat">Groups of 4 facts</span></div>
+        <div class="tile"><span class="label">Arcade this week</span><strong>${minTxt(arcSec7)}</strong><span class="delta flat">${a7.length} reward game${a7.length===1?'':'s'}</span></div>
+      </div>
+
+      <div class="panel">
+        <h2>Practice, last 14 days</h2>
+        ${chart}
+        <div class="legend"><span><i style="background:var(--amber)"></i>Math minutes</span><span><i style="background:var(--khaki); opacity:.45"></i>Arcade minutes</span></div>
+        <p class="note">All time: ${minTxt(allMathSec)} of math, ${minTxt(allArcSec)} in the arcade.</p>
+      </div>
+
+      <div class="panel">
+        <h2>Trouble facts</h2>
+        <p class="note">Facts he gets wrong or answers slowly (over 5 seconds), worst first. "Said" lists his recent wrong answers, which often show the mix-up (for example, 56 for 7 × 9).</p>
+        ${trouble.length ? `<div class="tbl-wrap"><table class="rep"><thead><tr><th>Fact</th><th>Tries</th><th>Right</th><th>Speed</th><th>Said</th></tr></thead><tbody>${troubleRows}</tbody></table></div>` : '<p>No trouble facts yet. Everything he has tried, he answers right and fast.</p>'}
+      </div>
+
+      <div class="panel">
+        <h2>Every fact</h2>
+        <p class="note">Numbers are his median seconds to answer correctly. Tap a square for details.</p>
+        <div class="hgrid" id="hgrid">${hg}</div>
+        <div class="legend">
+          <span><i class="h-good"></i>Mastered</span><span><i class="h-ok"></i>Learning</span><span><i class="h-slow"></i>Slow (over 5s)</span><span><i class="h-bad"></i>Often wrong</span><span><i class="h-none"></i>Not seen</span>
+        </div>
+        <p id="hdetail" class="note">Tap a square to see that fact.</p>
+      </div>
+
+      <div class="panel">
+        <h2>By times table</h2>
+        <div class="tbl-wrap"><table class="rep"><thead><tr><th>Table</th><th>Tries</th><th>Right</th><th>Speed</th><th>Mastered</th></tr></thead><tbody>${tt}</tbody></table></div>
+      </div>
+
+      <div class="panel">
+        <h2>By kind of practice</h2>
+        <div class="tbl-wrap"><table class="rep"><thead><tr><th>Practice</th><th>Answers</th><th>Right</th><th>Speed</th></tr></thead><tbody>${kindRows}</tbody></table></div>
+      </div>
+
+      <div class="panel">
+        <h2>Recent sessions</h2>
+        <div class="tbl-wrap"><table class="rep"><thead><tr><th>When</th><th>Mission</th><th>Time</th><th>Qs</th><th>Right</th><th>Speed</th></tr></thead><tbody>${recent}</tbody></table></div>
+      </div>`;
+    $$('#hgrid button').forEach(b => b.onclick = () => {
+      $$('#hgrid button.sel').forEach(x => x.classList.remove('sel')); b.classList.add('sel');
+      const [r,c] = b.dataset.f.split('x').map(Number), f = factStat(key(r,c)), l = lv(key(r,c));
+      const live = S.facts[key(r,c)], dueTxt = live && live.lv >= 3 && live.due ? (live.due <= Date.now() ? ' · review due now' : ` · next review in ${Math.ceil((live.due-Date.now())/DAY)} day${Math.ceil((live.due-Date.now())/DAY)===1?'':'s'}`) : '';
+      const status = (l == null && !f.n ? 'not seen yet' : (l||0) >= 3 ? 'mastered' : l === 0 ? 'missed recently' : 'still learning') + dueTxt;
+      $('#hdetail').innerHTML = `<b style="color:var(--fg)">${r} × ${c} = ${r*c}</b> · ${status}${f.n ? ` · typed ${f.n} time${f.n===1?'':'s'}, ${pctTxt(f.acc)} right, median ${secTxt(f.med)}${f.wrongs.length ? ` · wrong answers: ${f.wrongs.join(', ')}` : ''}` : ''}`;
+    });
+  }
+
+  // ---------- debrief ----------
+  function debrief(d){
+    const earnedBase = d.parts.reduce((s,[v]) => s+v, 0);
+    const o = ordersToday();
+    o.count++;
+    const bonus = o.count === 3;
+    if(bonus) d.parts.push([5,"for completing today's orders"]);
+    const nowBases = takenBases();
+    const prevBases = new Set(S.bases || []);
+    const newBases = nowBases.filter(id => !prevBases.has(id));
+    S.bases = nowBases;
+    if(newBases.length) d.parts.push([5*newBases.length, newBases.length===1 ? 'for capturing a bunker' : 'for capturing bunkers']);
+    const baseHtml = newBases.map(id => { const [n,g] = id.split('-').map(Number);
+      return `<div class="newbase pop">${FLAG}<span><b>${baseName(n,g)}</b><span class="muted">${n} × ${g*4+1} through ${n} × ${g*4+4}${sectorCount(n)===12 ? ` · ${n}s region liberated!` : ''}</span></span></div>`; }).join('');
+    const earned = earnedBase + (bonus ? 5 : 0) + 5*newBases.length;
+    const before = rankIndex(S.medals);
+    const coinsEarned = ({3:10,2:7,1:5})[d.stars] + 5*newBases.length + (d.bonusCoins||0);
+    S.coins = (S.coins||0) + coinsEarned;
+    S.medals += earned; S.missions++; save();
+    checkMissionAwards(d);
+    const awHtml = missionAwards.length ? `<div class="panel"><span class="label" style="color:var(--amber)">Secret award${missionAwards.length>1?'s':''} unlocked</span><div class="awards">${missionAwards.map(k => `<div class="award"><b>${AWARDS[k][0]}</b><span>${AWARDS[k][1]}. +5 medals, +5 coins</span></div>`).join('')}</div></div>` : '';
+    missionAwards = [];
+    recordSession({ kind:'math', mode:d.mode, sec:Math.max(1, Math.round((Date.now()-(d.started||Date.now()))/1000)), stars:d.stars, coins:coinsEarned, medals:earned, answers:d.log||[], facts:factSnapshot() });
+    const after = rankIndex(S.medals);
+    sfx.win();
+    const starHtml = [0,1,2].map(i => i<d.stars ? '★' : '<span class="off">★</span>').join('');
+    const msg = d.stars===3 ? 'Flawless. Not a single miss.' : d.stars===2 ? 'Strong mission. Those misses will show up again for practice.' : 'Mission done. Every miss you fixed is training that sticks.';
+    const stats = [...d.stats, ['+'+earned,'Medals']];
+    screens.debrief.innerHTML = `
+      <header class="masthead" style="text-align:center; align-items:center">
+        <span class="label">${d.kicker}</span>
+        <h1>Mission complete</h1>
+      </header>
+      <div class="stars" aria-label="${d.stars} of 3 stars">${starHtml}</div>
+      <p style="text-align:center">${msg}</p>
+      ${after>before ? `<div class="promo"><span class="label" style="color:var(--ink)">Promotion</span><div class="stamp pop">${RANKS[after][1]}</div></div>` : ''}
+      ${newBases.length ? `<div class="panel"><span class="label" style="color:var(--amber)">Bunker${newBases.length>1?'s':''} captured</span>${baseHtml}</div>` : ''}
+      ${bonus ? `<div class="promo"><span class="label" style="color:var(--ink)">Today's orders complete</span><div class="stamp pop">+5 bonus medals</div></div>` : ''}
+      <div class="coinbar">${COIN}<span><b>+${coinsEarned} coins</b><br><span class="muted">You have ${S.coins}. ${S.coins>=COST ? 'Enough for the Reward Arcade!' : `${COST-S.coins} more for the Reward Arcade.`}</span></span></div>
+      ${awHtml}
+      ${d.extra || ''}
+      <div class="stats">${stats.map(([v,l]) => `<div><strong>${v}</strong><span class="label">${l}</span></div>`).join('')}</div>
+      ${d.captured ? `<div class="panel"><h2>Territory captured</h2>${d.captured.startsWith('<p') ? d.captured : `<div class="chips">${d.captured}</div>`}</div>` : ''}
+      <p class="muted" style="font-size:.95rem; text-align:center">Medals: ${d.parts.map(([v,l]) => `${v} ${l}`).join(', ')}.</p>
+      <div class="row">
+        <button class="btn-main" id="againBtn" type="button">Play again</button>
+        <button class="btn-sub" id="homeBtn" type="button">Back to HQ</button>
+      </div>`;
+    show('debrief');
+    $('#againBtn').onclick = d.again;
+    $('#homeBtn').onclick = goHome;
+  }
+
+  if(!S.srs){
+    for(const k in S.facts){ const i = S.facts[k];
+      if(i.lv >= 3){ i.int = i.int || 1; i.due = i.due || Date.now(); i.fastDays = Math.max(2, i.fastDays||0); i.ever = 1; }
+      else { i.fastDays = i.lv >= 2 ? 1 : 0; }
+    }
+    S.srs = 1; save();
+  }
+  if(!S.ever1){ for(const k in S.facts) if(S.facts[k].lv >= 3) S.facts[k].ever = 1; S.ever1 = 1; save(); }
+  if(!Array.isArray(S.bases)){ S.bases = takenBases(); save(); }
+  if(!storageOK) $('#saveWarn').hidden = false;
+  // ask the browser to keep this game's saved data instead of clearing it under storage pressure
+  const askPersist = () => { try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); }catch(e){} };
+  askPersist(); document.addEventListener('pointerdown', askPersist, { once:true });
+  if(!S.crate1){ S.crate1 = 1; S.coins = (S.coins||0) + 20; save(); setTimeout(() => toast('Supply crate from HQ', '+20 coins. Sorry about the arcade glitch, Commander.', true, 'Delivery'), 1200); }
+  renderHome();
+  if(location.hash === '#report') openReport(); else { show('home'); setTimeout(maybeAttack, 900); }
+})();
+</script>
+
+
+</body>
+</html>
