@@ -10,6 +10,7 @@
 <meta name="theme-color" content="#1d2116">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="icon" href="icon.png">
+<meta http-equiv="Cache-Control" content="no-cache">
 <style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 
 <title>Deck Commander</title>
@@ -467,6 +468,9 @@ table.rep td.wrap{white-space:normal; text-align:left}
   .mission .go{display:none}
 }
 
+.tiles > .tile{height:auto; background:var(--panel); border:1px solid var(--line); box-shadow:none; color:var(--fg); font-family:var(--body); font-size:1rem; padding:12px}
+#gameTitle{-webkit-user-select:none; user-select:none; -webkit-touch-callout:none}
+
 /* Debrief */
 .stars{font-size:3rem; letter-spacing:.15em; color:var(--amber); text-align:center; line-height:1}
 .stars .off{color:var(--panel2)}
@@ -500,7 +504,7 @@ table.rep td.wrap{white-space:normal; text-align:left}
     <header class="masthead">
       <div class="savewarn" id="saveWarn" hidden><b>Progress can't be saved here.</b> Turn off Private Browsing. If that doesn't fix it, go to Settings &rsaquo; Apps &rsaquo; Safari and turn off "Block All Cookies".</div>
       <span class="label">Times-tables campaign</span>
-      <h1>Deck Commander</h1>
+      <h1 id="gameTitle">Deck Commander</h1>
       <p>Capture all 78 facts to win the war.</p>
     </header>
 
@@ -829,7 +833,7 @@ table.rep td.wrap{white-space:normal; text-align:left}
     <header class="masthead">
       <span class="label">Deck Commander &middot; multiplication facts 1&ndash;12</span>
       <h1>Progress Report</h1>
-      <p class="muted" style="font-family:var(--body); font-size:1rem">Every answer from every mission, with speed and mistakes. Recall speed comes from the typing missions (Bunker Assault and Code Breaker), where he has to produce the answer himself.</p>
+      <p class="muted" style="font-family:var(--body); font-size:1rem">Every answer from every mission, with speed and mistakes. Recall speed comes from the missions where he types the answer himself.</p>
     </header>
     <div class="sync" id="repSync"></div>
     <div id="repBody" style="display:flex; flex-direction:column; gap:16px"></div>
@@ -4188,6 +4192,14 @@ table.rep td.wrap{white-space:normal; text-align:left}
     renderReport();
   }
   $('#repBack').onclick = goHome;
+  // Parent shortcut: press and hold the game title for 3 seconds to open the progress report
+  (function(){
+    const t = $('#gameTitle'); let timer = null;
+    const cancel = () => { clearTimeout(timer); timer = null; };
+    t.addEventListener('pointerdown', () => { cancel(); timer = setTimeout(() => { timer = null; tone(880,.08,'sine',.04); openReport(); }, 3000); });
+    ['pointerup','pointerleave','pointercancel'].forEach(ev => t.addEventListener(ev, cancel));
+    t.addEventListener('contextmenu', e => e.preventDefault());
+  })();
   window.addEventListener('hashchange', () => { if(location.hash === '#report') openReport(); });
 
   const med = arr => { const v = arr.filter(x => x != null).sort((a,b)=>a-b); if(!v.length) return null; const m = Math.floor(v.length/2); return v.length%2 ? v[m] : (v[m-1]+v[m])/2; };
@@ -4212,7 +4224,7 @@ table.rep td.wrap{white-space:normal; text-align:left}
       sync.innerHTML = `<span class="dot"></span><span>Live. Synced from every device signed in to this account.${lastAt ? ` Last activity ${fmtWhen(lastAt)}.` : ''}</span>`;
     } else {
       sync.className = 'sync';
-      sync.innerHTML = `<span class="dot"></span><span>${dbState==='checking' ? 'Connecting…' : 'Showing practice saved on this device only. To see his iPad from your phone, the iPad must be signed in to the same Claude account that owns this game.'}</span>`;
+      sync.innerHTML = `<span class="dot"></span><span>${dbState==='checking' ? 'Connecting…' : `Everything he has played on this device.${lastAt ? ` Last activity ${fmtWhen(lastAt)}.` : ''}`}</span>`;
     }
     const body = $('#repBody');
     if(!math.length){
@@ -4307,7 +4319,7 @@ table.rep td.wrap{white-space:normal; text-align:left}
     const allMathSec = math.reduce((s,x)=>s+(x.sec||0),0), allArcSec = arc.reduce((s,x)=>s+(x.sec||0),0);
     body.innerHTML = `
       <div class="tiles">
-        <div class="tile"><span class="label">Math this week</span><strong>${minTxt(mathSec7)}</strong><span class="delta flat">${m7.length} missions on ${days7} day${days7===1?'':'s'}</span></div>
+        <div class="tile"><span class="label">Math this week</span><strong>${minTxt(mathSec7)}</strong><span class="delta flat">${m7.length} mission${m7.length===1?"":"s"} on ${days7} day${days7===1?'':'s'}</span></div>
         <div class="tile"><span class="label">Accuracy this week</span><strong>${pctTxt(acc7)}</strong>${delta(acc7, accP, 'up', 'pct')}</div>
         <div class="tile"><span class="label">Answer speed</span><strong>${secTxt(spd7)}</strong>${delta(spd7, spdP, 'down', 's')}</div>
         <div class="tile"><span class="label">Facts mastered</span><strong>${mastered}<span class="muted" style="font-size:1rem"> / 78</span></strong><span class="delta flat">Fast and right on 2+ days</span></div>
@@ -4434,6 +4446,25 @@ table.rep td.wrap{white-space:normal; text-align:left}
 })();
 </script>
 
+
+<div id="updBar" hidden style="position:fixed;left:0;right:0;bottom:0;z-index:70;display:flex;justify-content:center;padding:0 16px calc(14px + env(safe-area-inset-bottom,0px))">
+  <button id="updBtn" type="button" style="font-family:'Black Ops One',Impact,sans-serif;font-size:1.2rem;background:#8bbd52;color:#1f1e1a;border:0;border-radius:8px;padding:14px 22px;box-shadow:0 8px 24px rgba(0,0,0,.5);max-width:480px;width:100%">New version ready. Tap to update</button>
+</div>
+<script>
+(function(){
+  window.DC_BUILD='1793141391';
+  var newer = null;
+  function check(){
+    fetch(location.pathname + '?v=' + Date.now(), { cache:'no-store' }).then(function(r){ return r.text(); }).then(function(t){
+      var m = t.match(/DC_BUILD='(\d+)'/);
+      if(m && m[1] !== window.DC_BUILD && +m[1] > +window.DC_BUILD){ newer = m[1]; document.getElementById('updBar').hidden = false; }
+    }).catch(function(){});
+  }
+  document.getElementById('updBtn').onclick = function(){ location.replace(location.pathname + '?v=' + (newer || Date.now())); };
+  check();
+  document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible') check(); });
+})();
+</script>
 
 </body>
 </html>
