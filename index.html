@@ -2372,7 +2372,7 @@ table.rep td.wrap{white-space:normal; text-align:left}
     const dt = Math.min(.05, (now - R.last)/1000); R.last = now; R.tm += dt;
     if(!R.done) R.clock += dt;
     const g = nextGate();
-    const mult = { jeep:1.1, halftrack:1, tank:.92 }[R.v.body] || 1;
+    const mult = bodyMult(R.v.body);
     let target;
     if(R.mode === 'rally') target = 90*mult + (R.boost > 0 ? 75 : 0);
     else {
@@ -2442,9 +2442,10 @@ table.rep td.wrap{white-space:normal; text-align:left}
           return;
         }
         if(R.jump > 0){ popR(R.x, JY-36, 'JUMPED IT', '#8fd3ff'); return; }
-        const crush = (o.kind === 'crater' && (R.v.wheels === 'offroad' || R.v.wheels === 'treads' || R.v.body === 'tank')) || (o.kind === 'rock' && (R.v.wheels === 'treads' || R.v.body === 'tank')) || (o.kind === 'wire' && R.v.armor === 'heavy') || (o.kind === 'cone' && R.v.armor !== 'none');
+        const B = R.v.body;
+        const crush = B === 'monster' || (o.kind === 'crater' && (R.v.wheels === 'offroad' || R.v.wheels === 'treads' || B === 'tank' || B === 'buggy' || B === 'apc')) || (o.kind === 'rock' && (R.v.wheels === 'treads' || B === 'tank')) || (o.kind === 'wire' && (R.v.armor === 'heavy' || B === 'apc')) || (o.kind === 'cone' && (R.v.armor !== 'none' || B === 'truck' || B === 'humvee'));
         if(crush){ popR(R.x, JY-36, 'CRUSHED', '#8bbd52'); boomR(o.x, sy(o.wy), 6); tone(120,.08,'square',.04); R.score += 2; if(o.kind !== 'crater') o.dead = true; return; }
-        const keep = { none:.35, plates:.6, heavy:.72 }[R.v.armor] + (R.v.body === 'tank' ? .1 : 0);
+        const keep = Math.min(.9, { none:.35, plates:.6, heavy:.72 }[R.v.armor] + ({ tank:.1, apc:.15, truck:.1, humvee:.05, rally:-.1 })[R.v.body] || 0);
         R.bumps++; R.speed *= (o.kind === 'oil' ? .5 : keep); R.shake = 7; R.score = Math.max(0, R.score - 5); sfx.miss(); popR(R.x, JY-36, o.kind === 'oil' ? 'SKID!' : 'BUMP', '#e3653f');
         if(o.hp || o.kind === 'cone'){ o.hp = 0; o.dead = true; boomR(o.x, sy(o.wy), 8); }
       }
@@ -2568,7 +2569,7 @@ table.rep td.wrap{white-space:normal; text-align:left}
   $('#rcv').addEventListener('pointermove', e => { if(e.buttons || e.pointerType === 'touch') rSteer(e); });
   function endRun(){
     const r = R; stopRun();
-    const vn = r.v.name || 'Your ' + ({ jeep:'jeep', halftrack:'half-track', tank:'tank' })[r.v.body];
+    const vn = r.v.name || 'Your ' + (BODY_NAMES[r.v.body] || 'vehicle');
     const stars = r.misses===0 ? 3 : r.misses<=2 ? 2 : 1;
     const chips = r.newly.map(k => { const [a,b]=k.split('x'); return `<span class="chip">${a} × ${b} = ${a*b}</span>`; }).join('');
     const captured = chips || '<p class="muted">No new facts captured this time.</p>';
@@ -2844,7 +2845,15 @@ table.rep td.wrap{white-space:normal; text-align:left}
   // ---------- Motor Pool: design the vehicle he drives ----------
   const PAINT = { olive:'#7d8a52', tan:'#c2a878', gray:'#7c8790', forest:'#46663a', arctic:'#e6e8e2', black:'#2e302b', red:'#a8322a', gold:'#d9ad3c' };
   const PARTS = {
-    body:   [ { id:'jeep', name:'Jeep', desc:'Fast' }, { id:'halftrack', name:'Half-track', desc:'Balanced', need:{ w:8 } }, { id:'tank', name:'Tank', desc:'Tough', need:{ w:20 } } ],
+    body:   [ { id:'jeep', name:'Jeep', desc:'Quick all-rounder' },
+              { id:'humvee', name:'Humvee', desc:'Wide and sturdy' },
+              { id:'buggy', name:'Dune buggy', desc:'Fast. Rolls over craters' },
+              { id:'rally', name:'Rally car', desc:'Fastest. Fragile' },
+              { id:'halftrack', name:'Half-track', desc:'Balanced', need:{ w:8 } },
+              { id:'truck', name:'Supply truck', desc:'Slow but sturdy', need:{ w:12 } },
+              { id:'monster', name:'Monster truck', desc:'Crushes everything', need:{ b:6 } },
+              { id:'apc', name:'APC', desc:'Armored transport. Plows through wire', need:{ w:16 } },
+              { id:'tank', name:'Tank', desc:'Toughest. Crushes rocks', need:{ w:20 } } ],
     paint:  [ { id:'olive', name:'Olive' }, { id:'tan', name:'Desert' }, { id:'gray', name:'Steel' }, { id:'forest', name:'Forest', need:{ m:3 } }, { id:'arctic', name:'Arctic', need:{ a:'streak3' } }, { id:'black', name:'Black Ops', need:{ egg:1 } }, { id:'red', name:'Red Alert', need:{ w:15 } }, { id:'gold', name:'Gold', need:{ lib:1 } } ],
     pattern:[ { id:'none', name:'Plain' }, { id:'stripes', name:'Stripes', need:{ w:2 } }, { id:'camo', name:'Camo', need:{ w:6 } }, { id:'tiger', name:'Tiger', need:{ t:[6,3] } }, { id:'flames', name:'Flames', need:{ w:25 } } ],
     wheels: [ { id:'std', name:'Standard' }, { id:'offroad', name:'Off-road', desc:'Rolls over craters', need:{ b:2 } }, { id:'treads', name:'Treads', desc:'Crushes rocks and craters', need:{ t:[7,3] } } ],
@@ -2876,6 +2885,7 @@ table.rep td.wrap{white-space:normal; text-align:left}
     if(n.m) return `Finish ${n.m} missions`;
     if(n.t) return `Master ${n.t[1]} facts from the ${n.t[0]}s`;
     if(n.wt) return `Upgrade a weapon to ${n.wt}`;
+    if(n.a === 'champion') return `Win a Rally Race`;
     if(n.a) return `Secret award`;
     if(n.egg) return `Find an Easter egg`;
     if(n.lib) return `Liberate a region`;
@@ -2890,14 +2900,21 @@ table.rep td.wrap{white-space:normal; text-align:left}
     return fresh;
   }
   const isUnlocked = (cat, p) => !p.need || (S.unlocked||[]).includes(cat+':'+p.id);
+  const BSTAT = {
+    jeep:{ spd:4, tough:1, mult:1.1 }, humvee:{ spd:3, tough:2, mult:1.03 }, buggy:{ spd:5, tough:1, mult:1.16 }, rally:{ spd:5, tough:1, mult:1.22 },
+    halftrack:{ spd:3, tough:2, mult:1 }, truck:{ spd:2, tough:3, mult:.95 }, monster:{ spd:3, tough:3, mult:1 }, apc:{ spd:2, tough:4, mult:.93 }, tank:{ spd:2, tough:3, mult:.92 }
+  };
+  const bodyMult = b => (BSTAT[b] || BSTAT.jeep).mult;
+  const bodyTough = b => ({ jeep:1, humvee:.85, buggy:1.05, rally:1.15, halftrack:.9, truck:.82, monster:.8, apc:.7, tank:.8 })[b] || 1;
+  const BODY_NAMES = { jeep:'jeep', humvee:'Humvee', buggy:'dune buggy', rally:'rally car', halftrack:'half-track', truck:'supply truck', monster:'monster truck', apc:'APC', tank:'tank' };
   function vstats(v){
-    const spd = { jeep:4, halftrack:3, tank:2 }[v.body] + (v.wheels==='offroad' ? 1 : 0) - (v.armor==='heavy' ? 1 : 0);
-    const tough = { jeep:1, halftrack:2, tank:3 }[v.body] + { none:0, plates:1, heavy:2 }[v.armor] + (v.wheels==='treads' ? 1 : 0);
-    const fire = { mg:1, twin:2, cannon:3, rockets:4 }[v.gun] + (v.body==='tank' ? 1 : 0);
+    const spd = (BSTAT[v.body]||BSTAT.jeep).spd + (v.wheels==='offroad' ? 1 : 0) - (v.armor==='heavy' ? 1 : 0);
+    const tough = (BSTAT[v.body]||BSTAT.jeep).tough + { none:0, plates:1, heavy:2 }[v.armor] + (v.wheels==='treads' ? 1 : 0);
+    const fire = ({ mg:1, twin:2, cannon:3, rockets:4 }[v.gun]||1) + (v.body==='tank' || v.body==='apc' ? 1 : 0);
     return { spd:Math.max(1,Math.min(5,spd)), tough:Math.max(1,Math.min(5,tough)), fire:Math.max(1,Math.min(5,fire)) };
   }
   function shade(hex, amt){ const n = parseInt(hex.slice(1),16); const f = v => Math.max(0, Math.min(255, v + amt)); return `rgb(${f(n>>16)},${f((n>>8)&255)},${f(n&255)})`; }
-  const BODY = { jeep:{ w:22, h:40 }, halftrack:{ w:26, h:46 }, tank:{ w:30, h:48 } };
+  const BODY = { jeep:{ w:22, h:40 }, humvee:{ w:28, h:42 }, buggy:{ w:20, h:34 }, rally:{ w:20, h:38 }, halftrack:{ w:26, h:46 }, truck:{ w:24, h:56 }, monster:{ w:24, h:38 }, apc:{ w:28, h:52 }, tank:{ w:30, h:48 } };
   function drawVehicle(c, x, y, sc, v, flash){
     const B = BODY[v.body] || BODY.jeep, col = PAINT[v.paint] || PAINT.olive, W = B.w, H = B.h;
     c.save(); c.translate(x, y); c.scale(sc, sc);
@@ -2907,9 +2924,15 @@ table.rep td.wrap{white-space:normal; text-align:left}
     const wheel = (x0, y0) => { const ww = v.wheels==='offroad' ? 8 : 6, wh = v.wheels==='offroad' ? 13 : 10; c.fillStyle = dark; c.fillRect(x0 - ww/2, y0, ww, wh); if(v.wheels==='offroad'){ c.fillStyle = '#4a453c'; for(let k=2;k<wh;k+=3) c.fillRect(x0-ww/2, y0+k, ww, 1.2); } };
     if(v.body === 'tank' || v.wheels === 'treads'){ tracks(-W/2-6, -H/2+2, H-4); tracks(W/2-1, -H/2+2, H-4); }
     else if(v.body === 'halftrack'){ wheel(-W/2-1, -H/2+4); wheel(W/2+1, -H/2+4); tracks(-W/2-6, -2, H/2-2); tracks(W/2-1, -2, H/2-2); }
+    else if(v.body === 'apc'){ [0,1,2,3].forEach(k => { const yy = -H/2+5 + k*(H-16)/3; wheel(-W/2-1, yy); wheel(W/2+1, yy); }); }
+    else if(v.body === 'truck'){ wheel(-W/2-1, -H/2+5); wheel(W/2+1, -H/2+5); [H/2-26, H/2-14].forEach(yy => { wheel(-W/2-1, yy); wheel(W/2+1, yy); }); }
+    else if(v.body === 'monster'){ const big = (x0, y0) => { c.fillStyle = dark; c.fillRect(x0-6, y0, 12, 17); c.fillStyle = '#4a453c'; for(let k=1;k<17;k+=3) c.fillRect(x0-6, y0+k, 12, 1.4); }; big(-W/2-3, -H/2-3); big(W/2+3, -H/2-3); big(-W/2-3, H/2-14); big(W/2+3, H/2-14); }
+    else if(v.body === 'buggy'){ wheel(-W/2-1, -H/2+3); wheel(W/2+1, -H/2+3); const bigR = (x0, y0) => { c.fillStyle = dark; c.fillRect(x0-5, y0, 10, 14); }; bigR(-W/2-2, H/2-15); bigR(W/2+2, H/2-15); }
+    else if(v.body === 'rally'){ wheel(-W/2, -H/2+6); wheel(W/2, -H/2+6); wheel(-W/2, H/2-14); wheel(W/2, H/2-14); }
+    else if(v.body === 'humvee'){ const fat = (x0, y0) => { c.fillStyle = dark; c.fillRect(x0-4, y0, 8, 11); }; fat(-W/2, -H/2+4); fat(W/2, -H/2+4); fat(-W/2, H/2-15); fat(W/2, H/2-15); }
     else { wheel(-W/2-1, -H/2+5); wheel(W/2+1, -H/2+5); wheel(-W/2-1, H/2-15); wheel(W/2+1, H/2-15); }
     // body
-    const r = v.body === 'tank' ? 3 : 5;
+    const r = ({ tank:3, humvee:3, apc:3, truck:3, rally:9, buggy:6, monster:6 })[v.body] ?? 5;
     const bodyPath = () => { c.beginPath(); c.moveTo(-W/2+r, -H/2); c.lineTo(W/2-r, -H/2); c.quadraticCurveTo(W/2, -H/2, W/2, -H/2+r); c.lineTo(W/2, H/2-r); c.quadraticCurveTo(W/2, H/2, W/2-r, H/2); c.lineTo(-W/2+r, H/2); c.quadraticCurveTo(-W/2, H/2, -W/2, H/2-r); c.lineTo(-W/2, -H/2+r); c.quadraticCurveTo(-W/2, -H/2, -W/2+r, -H/2); c.closePath(); };
     bodyPath(); c.fillStyle = col; c.fill();
     c.save(); bodyPath(); c.clip();
@@ -2924,7 +2947,15 @@ table.rep td.wrap{white-space:normal; text-align:left}
     if(v.armor === 'heavy'){ c.strokeStyle = shade(col, -70); c.lineWidth = 2.5; bodyPath(); c.stroke(); c.fillStyle = '#5c584e'; c.beginPath(); c.moveTo(-W/2-3, -H/2-1); c.lineTo(W/2+3, -H/2-1); c.lineTo(W/2-2, -H/2-6); c.lineTo(-W/2+2, -H/2-6); c.fill(); }
     // cab / turret
     const turret = v.body === 'tank';
-    if(!turret){ c.fillStyle = '#1f1e1a'; c.fillRect(-W/2+3, -H/2+9, W-6, 6); c.fillStyle = shade(col, -25); c.fillRect(-W/2+3, -H/2+16, W-6, H*.42); }
+    if(!turret){
+      if(v.body === 'truck'){ c.fillStyle = '#1f1e1a'; c.fillRect(-W/2+3, -H/2+5, W-6, 5); c.fillStyle = shade(col, -20); c.fillRect(-W/2+2, -H/2+12, W-4, 5); c.fillStyle = shade(col, 25); c.fillRect(-W/2+2, -H/2+19, W-4, H-22); c.strokeStyle = shade(col, -40); c.lineWidth = 1; for(let k=-H/2+24; k<H/2-3; k+=6){ c.beginPath(); c.moveTo(-W/2+2, k); c.lineTo(W/2-2, k); c.stroke(); } }
+      else if(v.body === 'buggy'){ c.strokeStyle = '#26221d'; c.lineWidth = 2; c.strokeRect(-W/2+3, -H/2+9, W-6, H*.48); c.beginPath(); c.moveTo(-W/2+3, -H/2+9); c.lineTo(W/2-3, -H/2+9+H*.48); c.moveTo(W/2-3, -H/2+9); c.lineTo(-W/2+3, -H/2+9+H*.48); c.stroke(); c.fillStyle = '#1f1e1a'; c.beginPath(); c.arc(0, -H/2+9+H*.24, 3.5, 0, 7); c.fill(); }
+      else if(v.body === 'rally'){ c.fillStyle = '#1f1e1a'; c.beginPath(); c.moveTo(-W/2+4, -H/2+12); c.lineTo(W/2-4, -H/2+12); c.lineTo(W/2-3, -H/2+18); c.lineTo(-W/2+3, -H/2+18); c.fill(); c.fillStyle = shade(col, -25); c.fillRect(-W/2+3, -H/2+19, W-6, H*.36); c.fillStyle = '#1f1e1a'; c.fillRect(-W/2+3, H/2-11, W-6, 3); c.fillStyle = shade(col, -50); c.fillRect(-W/2-2, H/2-4, W+4, 4); }
+      else if(v.body === 'apc'){ c.fillStyle = shade(col, -30); c.beginPath(); c.moveTo(-W/2, -H/2+10); c.lineTo(-W/2+6, -H/2); c.lineTo(W/2-6, -H/2); c.lineTo(W/2, -H/2+10); c.closePath(); c.fill(); c.fillStyle = '#1f1e1a'; c.fillRect(-W/2+6, -H/2+4, W-12, 3); c.fillStyle = shade(col, -20); [[-6,H/2-14],[6,H/2-14]].forEach(([hx,hy]) => { c.beginPath(); c.arc(hx, hy, 4, 0, 7); c.fill(); }); c.strokeStyle = shade(col, -55); c.lineWidth = 1; c.strokeRect(-W/2+4, H/2-6, W-8, 4); }
+      else if(v.body === 'humvee'){ c.fillStyle = '#1f1e1a'; c.fillRect(-W/2+3, -H/2+10, (W-7)/2, 6); c.fillRect(1, -H/2+10, (W-7)/2, 6); c.fillStyle = shade(col, -25); c.fillRect(-W/2+3, -H/2+17, W-6, H*.4); c.fillStyle = shade(col, -45); c.fillRect(-W/2, -H/2, W, 3); }
+      else if(v.body === 'monster'){ c.fillStyle = '#1f1e1a'; c.fillRect(-W/2+3, -H/2+9, W-6, 6); c.fillStyle = shade(col, -25); c.fillRect(-W/2+3, -H/2+16, W-6, H*.4); c.fillStyle = '#ffd27a'; c.fillRect(-W/2+3, -H/2+1, 4, 2); c.fillRect(W/2-7, -H/2+1, 4, 2); }
+      else { c.fillStyle = '#1f1e1a'; c.fillRect(-W/2+3, -H/2+9, W-6, 6); c.fillStyle = shade(col, -25); c.fillRect(-W/2+3, -H/2+16, W-6, H*.42); }
+    }
     const gy = turret ? 2 : -H/2+H*.45;
     if(turret){ c.fillStyle = shade(col, -20); c.beginPath(); c.arc(0, gy, 9, 0, 7); c.fill(); c.strokeStyle = shade(col, -60); c.lineWidth = 1; c.stroke(); }
     // gun
@@ -2945,7 +2976,7 @@ table.rep td.wrap{white-space:normal; text-align:left}
   }
   function groundPatch(c, w, h){ c.fillStyle = '#8a7a58'; c.fillRect(0,0,w,h); c.fillStyle = 'rgba(60,50,30,.15)'; for(let i=0;i<w;i+=16){ c.fillRect(i, 0, 2, h); } }
   let gTab = 'body';
-  function vName(){ const v = veh(); return v.name || ({ jeep:'Your jeep', halftrack:'Your half-track', tank:'Your tank' })[v.body]; }
+  function vName(){ const v = veh(); return v.name || 'Your ' + (BODY_NAMES[v.body] || 'vehicle'); }
   function renderMPCard(){
     const cv = $('#mpThumb'), dpr = Math.min(2, window.devicePixelRatio||1); cv.width = 96*dpr; cv.height = 96*dpr;
     const c = cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0); groundPatch(c, 96, 96); drawVehicle(c, 48, 50, 1.45, veh(), 0);
@@ -3675,7 +3706,7 @@ table.rep td.wrap{white-space:normal; text-align:left}
     endTitle(d){ return { win:'Last car running!', wrecked:'Wrecked!', time:"Time's up" }[d] || "Time's up"; },
     init(){
       const v = Object.assign({}, veh(), { gun:'none' });
-      const mk = (x, y, a, me, paint) => ({ x, y, vx:0, vy:0, a, hp:100, me, v: me ? v : { body:['jeep','halftrack','jeep','tank'][Math.floor(Math.random()*4)], paint, pattern:Math.random()<.5 ? 'stripes' : 'none', wheels:'std', armor:'none', gun:'none', decal:'none' }, dead:false, think:0, tx:0, ty:0, smoke:0 });
+      const mk = (x, y, a, me, paint) => ({ x, y, vx:0, vy:0, a, hp:100, me, v: me ? v : { body:['jeep','humvee','buggy','halftrack','truck','rally'][Math.floor(Math.random()*6)], paint, pattern:Math.random()<.5 ? 'stripes' : 'none', wheels:'std', armor:'none', gun:'none', decal:'none' }, dead:false, think:0, tx:0, ty:0, smoke:0 });
       const cars = [ mk(200, 500, -Math.PI/2, true), mk(200, 110, Math.PI/2, false, 'red'), mk(60, 300, 0, false, 'gray'), mk(340, 300, Math.PI, false, 'tan'), mk(320, 150, 2.3, false, 'gold') ];
       return { cars, hold:false, px:200, py:300, ko:0, dealt:0 };
     },
@@ -3695,7 +3726,7 @@ table.rep td.wrap{white-space:normal; text-align:left}
         }
         let da = ((ta - car.a + Math.PI*3) % (Math.PI*2)) - Math.PI;
         car.a += Math.max(-1, Math.min(1, da)) * 3.4 * dt;
-        const acc = (car.me ? 330 : 280) * throttle * ({ jeep:1.08, halftrack:1, tank:.9 }[car.v.body] || 1);
+        const acc = (car.me ? 330 : 280) * throttle * bodyMult(car.v.body);
         car.vx += Math.cos(car.a)*acc*dt; car.vy += Math.sin(car.a)*acc*dt;
         // grip: kill sideways slide, plus drag
         const fx = Math.cos(car.a), fy = Math.sin(car.a), fwd = car.vx*fx + car.vy*fy, side = -car.vx*fy + car.vy*fx;
@@ -3727,7 +3758,7 @@ table.rep td.wrap{white-space:normal; text-align:left}
         if(!B.dead){ B.vx += k*nx*jB*(A.dead ? 2 : 1); B.vy += k*ny*jB*(A.dead ? 2 : 1); }
         if(imp < 40) continue;
         const frontA = Math.max(0, Math.cos(A.a)*nx + Math.sin(A.a)*ny), frontB = Math.max(0, -(Math.cos(B.a)*nx + Math.sin(B.a)*ny));
-        const armor = c => ({ none:1, plates:.8, heavy:.65 }[c.v.armor] || 1) * (c.v.body === 'tank' ? .8 : 1) * (c.me ? .55 : 1);
+        const armor = c => ({ none:1, plates:.8, heavy:.65 }[c.v.armor] || 1) * bodyTough(c.v.body) * (c.me ? .55 : 1);
         const aiPair = !A.me && !B.me ? .6 : 1;
         const dA = imp*.085*(1 - .75*frontA)*armor(A)*aiPair, dB = imp*.085*(1 - .75*frontB)*armor(B)*aiPair;
         if(!A.dead) A.hp -= dA; if(!B.dead) B.hp -= dB;
