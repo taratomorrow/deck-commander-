@@ -566,9 +566,7 @@ table.rep td.wrap{white-space:normal; text-align:left}
       <canvas id="bf" width="400" height="600" role="img" aria-label="Battlefield map"></canvas>
       <div class="legend">
         <span><i class="s-captured"></i>Captured fact</span>
-        <span><i class="s-contested"></i>Contested</span>
-        <span><i class="s-fire"></i>Under fire</span>
-        <span><i class="s-unscouted"></i>Not scouted</span>
+        <span><i class="s-unscouted" style="border:1px solid var(--khaki)"></i>Not captured yet</span>
       </div>
       <div class="bfinfo" id="bfInfo"></div>
     </div>
@@ -1267,8 +1265,9 @@ table.rep td.wrap{white-space:normal; text-align:left}
         const ang = Math.PI*(1.12 + i*0.253), fx = b.x + Math.cos(ang)*17, fy = b.y + 2 + Math.sin(ang)*17;
         const st = stateOf(key(...f));
         ctx.beginPath(); ctx.arc(fx, fy, 4.2, 0, 7);
-        ctx.fillStyle = col[st]; ctx.fill();
-        ctx.lineWidth = 1.2; ctx.strokeStyle = st==='unscouted' ? 'rgba(200,185,138,.55)' : 'rgba(0,0,0,.5)'; ctx.stroke();
+        const got = st === 'captured';
+        ctx.fillStyle = got ? col.captured : col.unscouted; ctx.fill();
+        ctx.lineWidth = 1.2; ctx.strokeStyle = got ? 'rgba(0,0,0,.5)' : 'rgba(200,185,138,.55)'; ctx.stroke();
       });
       // dome
       ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(b.x+1.5, b.y+8, 12, 3.5, 0, 0, 7); ctx.fill();
@@ -1311,7 +1310,7 @@ table.rep td.wrap{white-space:normal; text-align:left}
     if(!target){ el.className = 'bfinfo'; el.innerHTML = `${FLAG}<div class="txt"><b>Every bunker is yours</b><span class="muted">Keep playing to hold the line.</span></div>`; return; }
     const [n,g] = target, taken = baseTaken(n,g);
     const facts = baseFacts(n,g), have = facts.filter(f => stateOf(key(...f))==='captured').length;
-    const chips = facts.map(([a,b]) => { const st = stateOf(key(a,b)); return `<span class="chip c-${st}">${a} × ${b} = ${st==='captured' ? a*b : '?'}</span>`; }).join('');
+    const chips = facts.map(([a,b]) => { const st = stateOf(key(a,b)); return `<span class="chip${st==='captured' ? '' : ' c-unscouted'}">${a} × ${b} = ${st==='captured' ? a*b : '?'}</span>`; }).join('');
     el.className = 'bfinfo' + (taken ? '' : ' enemy');
     el.innerHTML = `${FLAG}<div class="txt"><span class="label" style="color:${taken?'var(--amber)':'var(--bad)'}">${title}</span><b>${baseName(n,g)}</b><span class="muted">${taken ? 'Captured. Your flag flies here.' : `Enemy held · ${have} of 4 facts captured`}</span><div class="chips">${chips}</div></div>`;
   }
@@ -4452,7 +4451,7 @@ table.rep td.wrap{white-space:normal; text-align:left}
 </div>
 <script>
 (function(){
-  window.DC_BUILD='1793141391';
+  window.DC_BUILD='1793307190';
   var newer = null;
   function check(){
     fetch(location.pathname + '?v=' + Date.now(), { cache:'no-store' }).then(function(r){ return r.text(); }).then(function(t){
